@@ -17,3 +17,13 @@ class Fragment:
         contour = max(contours, key=cv.contourArea)  
         contour = contour.reshape(-1, 2)
         self.contour = contour
+        moments = cv.moments(binary_mask)  
+    
+        if moments["m00"] != 0:
+            self.cx = int(moments["m10"] / moments["m00"])  
+            self.cy = int(moments["m01"] / moments["m00"]) 
+        else:
+            self.cx = 0
+            self.cy = 0
+
+    
