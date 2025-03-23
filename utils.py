@@ -26,3 +26,16 @@ def divide_image(image_path, output_folder, n, m):
             fragments.append(fragment)
 
     return fragments  
+
+
+
+def find_centroid(image):
+    binary_mask =  (image[:, :, 3])
+    moments = cv.moments(binary_mask)  
+    if moments["m00"] != 0:
+        cx = int(moments["m10"] // moments["m00"])  
+        cy = int(moments["m01"] // moments["m00"]) 
+    else:
+        cx = 0
+        cy = 0
+    return cx, cy

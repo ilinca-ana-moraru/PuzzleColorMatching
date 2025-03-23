@@ -46,8 +46,8 @@ def rotate_fragment(fragments: List[Fragment],side, side_type):
     th1 = np.degrees(np.arctan2(y, x))
 
     if side_type == 1:
-        p1 = [0, h-1]
-        p2 = [h-1, h-1]
+        p1 = [0, w-1]
+        p2 = [h-1, w-1]
     else:
         p1 = [h-1, 0]
         p2 = [0, 0]
@@ -55,7 +55,8 @@ def rotate_fragment(fragments: List[Fragment],side, side_type):
     th2 = np.degrees(np.arctan2(y, x))
 
     rotation_angle = th2 - th1
-    centroid = [fragments[side.fragment_idx].cx, fragments[side.fragment_idx].cy]
+    cx, cy = find_centroid(image)
+    centroid = [cx, cy]
 
     # if abs(rotation_angle) < 1: 
     #     return image
@@ -64,8 +65,18 @@ def rotate_fragment(fragments: List[Fragment],side, side_type):
     #     return cv.flip(image, 1)  
 
     rotation_matrix = cv.getRotationMatrix2D(centroid, rotation_angle, 1)
-    rotated_image = cv.warpAffine(image, rotation_matrix, (w, h))
-    
+    cos_angle = abs(rotation_matrix[0, 0])
+    sin_angle = abs(rotation_matrix[0, 1])
+
+    new_w = int(h * sin_angle + w * cos_angle)
+    new_h = int(h * cos_angle + w * sin_angle)
+
+    # Adjust the rotation matrix to center the image
+    rotation_matrix[0, 2] += (new_w - w) / 2
+    rotation_matrix[1, 2] += (new_h - h) / 2
+
+    # Apply the transformation with the new dimensions
+    rotated_image = cv.warpAffine(image, rotation_matrix, (new_w, new_h))
     return rotated_image
 
 def two_fragments_merger(fragments: List[Fragment], comp: SidesComparison):
@@ -83,6 +94,21 @@ def two_fragments_merger(fragments: List[Fragment], comp: SidesComparison):
 
     return np.hstack((rotated_fragment1, rotated_fragment2))
 
+def merge_fragments_two_by_two(fragments: List[Fragment], sides_comparisons: List[SidesComparison]):
+    banned_fragments_idx = []
+    new_fragments = []
+    new_fr_idx = 0
+    for comp in sides_comparisons:
+        if comp.side1.fragment_idx not in banned_fragments_idx and comp.side2.fragment_idx not in banned_fragments_idx:
+
+            new_fragment_value = two_fragments_merger(fragments, comp)
+            # print(f"new fragment shapes: {new_fragment_value.shape}")
+            new_fragment = Fragment(new_fragment_value, new_fr_idx)
+            new_fragments.append(new_fragment)
+            banned_fragments_idx.append(comp.side1.fragment_idx)
+            banned_fragments_idx.append(comp.side2.fragment_idx)
+            new_fr_idx += 1
+    return new_fragments
 
 def show_similar_colored_edges(fragments: List[Fragment], sorted_sides_comparisons: List[SidesComparison]):
 

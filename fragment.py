@@ -34,7 +34,8 @@ class Fragment:
         else:
             self.cx = 0
             self.cy = 0
-
+        
+        self.create_sides()
 
     def create_sides(self):
         self.sides = []
