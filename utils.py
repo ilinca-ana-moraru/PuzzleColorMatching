@@ -16,11 +16,11 @@ def divide_image(image_path, output_folder, n, m):
     for i in range(n):
         for j in range(m):
             x, y = j * tile_w, i * tile_h  
-            cropped_piece = rgba_image[y:y + tile_h, x:x + tile_w]  
+            cropped_fragment = rgba_image[y:y + tile_h, x:x + tile_w]  
             
-            piece_path = os.path.join(output_folder, f"fragment_{i*m + j}.jpg")
-            cv.imwrite(piece_path, cropped_piece[..., [2, 1, 0, 3]])
-            fragment = Fragment(cropped_piece, i*m + j)
+            fragment_path = os.path.join(output_folder, f"fragment_{i*m + j}.jpg")
+            cv.imwrite(fragment_path, cropped_fragment[..., [2, 1, 0, 3]])
+            fragment = Fragment(cropped_fragment, i*m + j)
             # print(fragment.contour)
             # print("-------------------------------------------")
             fragments.append(fragment)
