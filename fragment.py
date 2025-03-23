@@ -20,7 +20,7 @@ class Fragment:
         # contour = contour.reshape(-1, 2)
         # self.contour = contour
         top_edge = np.array([[0, x] for x in range(w-1)])  
-        right_edge = np.array([[y, w - 1] for y in range(h)]) 
+        right_edge = np.array([[y, w - 1] for y in range(h-1)]) 
         bottom_edge = np.array([[h - 1, x] for x in range(w - 1, 0, -1)])  
         left_edge = np.array([[y, 0] for y in range(h - 1, 0, -1)]) 
         self.contour = np.concatenate([top_edge, right_edge, bottom_edge, left_edge])
