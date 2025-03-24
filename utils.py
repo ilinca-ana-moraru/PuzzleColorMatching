@@ -39,3 +39,24 @@ def find_centroid(image):
         cx = 0
         cy = 0
     return cx, cy
+
+
+from PIL import Image
+
+def fix_border(image):
+
+    width, height = image.shape[:2]
+
+    for x in range(1, width - 1):
+        image[x, 0] = image[x, 1]  
+    
+    for x in range(1, width - 1):
+        image[x, height - 1] = image[x, height - 2]  
+
+    for y in range(1, height - 1):
+        image[0, y] = image[1, y] 
+    
+    for y in range(1, height - 1):
+        image[width - 1, y] = image[width - 2, y] 
+
+    return image
