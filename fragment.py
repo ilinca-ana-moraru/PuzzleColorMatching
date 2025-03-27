@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np 
 from side import *
+from global_values import *
 
 class Fragment:
     def __init__(self,value, fragment_idx):
@@ -35,6 +36,8 @@ class Fragment:
             self.cx = 0
             self.cy = 0
         
+        self.grad = apply_Grad(self.value)
+        # self.grad =  apply_Grad(self.value)
         self.create_sides()
 
     def create_sides(self):
@@ -52,6 +55,7 @@ class Fragment:
                 side_indexes = np.concatenate([side_indexes1, side_indexes2[::-1]]) 
             # side_indexes = np.unique(side_indexes, axis = 0)
             side_value = np.squeeze(self.value[side_indexes[:,0],side_indexes[:,1]]) 
+            side_grad = self.grad[side_indexes[:,0],side_indexes[:,1]]
             first_corner_idx_in_contour = second_corner_idx_in_contour
-            self.sides.append(Side(side_value, side_indexes, first_corner_idx, self.fragment_idx))
+            self.sides.append(Side(side_value, side_grad, side_indexes, first_corner_idx, self.fragment_idx))
     

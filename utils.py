@@ -1,6 +1,8 @@
 import os
 import cv2 as cv
+import matplotlib.pyplot as plt
 from fragment import *
+import numpy as np
 
 def divide_image(image_path, output_folder, n, m):
     os.makedirs(output_folder, exist_ok=True)
@@ -20,10 +22,10 @@ def divide_image(image_path, output_folder, n, m):
             
             fragment_path = os.path.join(output_folder, f"fragment_{i*m + j}.jpg")
             cv.imwrite(fragment_path, cropped_fragment[..., [2, 1, 0, 3]])
-            fragment = Fragment(cropped_fragment, i*m + j)
+            fr = Fragment(cropped_fragment, i*m + j)
             # print(fragment.contour)
             # print("-------------------------------------------")
-            fragments.append(fragment)
+            fragments.append(fr)
 
     return fragments  
 
@@ -60,3 +62,5 @@ def fix_border(image):
         image[width - 1, y] = image[width - 2, y] 
 
     return image
+
+
