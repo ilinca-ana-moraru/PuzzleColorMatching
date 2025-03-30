@@ -15,10 +15,9 @@ class SidesComparison:
         self.grad_match = np.sqrt(np.sum((self.reversed_side1_grad - side2.grad)**2))
         
         self.grad_presence = np.sum(self.reversed_side1_grad + side2.grad)
-        self.grad_score = self.grad_match/ (self.grad_presence**2 + 0.000001)
-        self.score =  self.grad_score * 100 + self.color_score
-
-
+        self.grad_score = 50 * self.grad_match/ (self.grad_presence + 0.000001)
+        self.score =  np.sqrt(self.grad_score**2  + self.color_score**2)
+    
         self.is_valid_match = False
 
         if self.side1.fragment_idx == self.side2.fragment_idx - 1 and self.side1.side_idx == 1 and self.side2.side_idx == 3:
