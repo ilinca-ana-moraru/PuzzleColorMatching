@@ -36,8 +36,7 @@ class Fragment:
             self.cx = 0
             self.cy = 0
         
-        self.grad = apply_Grad(self.value)
-        # self.grad =  apply_Grad(self.value)
+        self.grad = grad_func(self.value)
         self.create_sides()
 
     def create_sides(self):

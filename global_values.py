@@ -5,24 +5,35 @@ import matplotlib.pyplot as plt
 from typing import List
 np.set_printoptions(threshold=np.inf)  
 
-from global_values import *
+
+
+COL_NR = 8
+ROW_NR = 8
+
+
+GRAD_GBR = True
+GRAD_GRAY = False
 
 
 
-COL_NR = 2
-ROW_NR = 2
+def grad_func(image):
+    if GRAD_GBR == True:
+        return apply_Grad_GBR(image)
+    if GRAD_GRAY == True:
+        return apply_Grad_Gray(image)
+    
 
 
+def grad_func(image):
+    if GRAD_GBR == True:
+        return apply_Grad_GBR(image)
+    if GRAD_GRAY == True:
+        return apply_Grad_Gray(image)
 
+def apply_Grad_GBR(image):
 
-def apply_Grad(image):
-    # print("initial img:")
-    # plt.imshow(image)
-    # plt.show()
     image = image[:, :, :3] 
     image_g_blur = cv.GaussianBlur(image, (5,5), 0) 
-    # plt.imshow(image_g_blur)
-    # plt.show()
     image_float = np.float32(image_g_blur)
 
     dx = cv.Sobel(image_float, cv.CV_64F, 1, 0, ksize=5)
@@ -31,11 +42,21 @@ def apply_Grad(image):
     dy = np.sqrt(dy[:,:,0]**2 + dy[:,:,1]**2 + dy[:,:,2]**2)
 
     grad = np.sqrt(dx**2 + dy**2)/10000
-    
-    # edges = cv.Canny(grad, 0.4, 1)
-    
-    # print(f"min pixel: {np.min(grad)} max pixel: {np.max(grad)}")
 
-    # plt.imshow(grad, cmap = "gray")
-    # plt.show()
+    return grad
+
+def apply_Grad_Gray(image):
+
+    image = image[:, :, :3] 
+    image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    image_g_blur = cv.GaussianBlur(image, (5,5), 0) 
+    image_float = np.float32(image_g_blur)
+
+    dx = cv.Sobel(image_float, cv.CV_64F, 1, 0, ksize=5)
+    dy = cv.Sobel(image_float, cv.CV_64F, 0, 1, ksize=5)
+
+    grad = np.sqrt(dx**2 + dy**2)/5120
+    # grad = normalized_sigmoid(grad)
+    # print(f"min {np.min(grad)} max:{np.max(grad)}")
+
     return grad
