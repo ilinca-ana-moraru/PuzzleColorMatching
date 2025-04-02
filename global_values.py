@@ -11,10 +11,12 @@ COL_NR = 8
 ROW_NR = 8
 
 
-GRAD_GBR = True
-GRAD_GRAY = False
+GRAD_GBR = False
+GRAD_GRAY = True
 
-
+def sigmoid(x):
+    x = 2 * abs(x) - 1
+    return 1 / (1 + np.exp(-x))
 
 def grad_func(image):
     if GRAD_GBR == True:
@@ -42,7 +44,7 @@ def apply_Grad_GBR(image):
     dy = np.sqrt(dy[:,:,0]**2 + dy[:,:,1]**2 + dy[:,:,2]**2)
 
     grad = np.sqrt(dx**2 + dy**2)/10000
-
+    # grad[grad<0.1] = 0
     return grad
 
 def apply_Grad_Gray(image):
@@ -56,6 +58,8 @@ def apply_Grad_Gray(image):
     dy = cv.Sobel(image_float, cv.CV_64F, 0, 1, ksize=5)
 
     grad = np.sqrt(dx**2 + dy**2)/5120
+    grad[grad<0.1] = 0
+
     # grad = normalized_sigmoid(grad)
     # print(f"min {np.min(grad)} max:{np.max(grad)}")
 

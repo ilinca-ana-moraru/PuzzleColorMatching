@@ -53,6 +53,7 @@ class Fragment:
                 side_indexes2 = self.contour[0:second_corner_idx_in_contour+1]
                 side_indexes = np.concatenate([side_indexes1, side_indexes2[::-1]]) 
             # side_indexes = np.unique(side_indexes, axis = 0)
+            self.value = self.value[:,:,:3]
             side_value = np.squeeze(self.value[side_indexes[:,0],side_indexes[:,1]]) 
             side_grad = self.grad[side_indexes[:,0],side_indexes[:,1]]
             first_corner_idx_in_contour = second_corner_idx_in_contour

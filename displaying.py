@@ -16,6 +16,7 @@ from global_values import *
 def display_the_fragments_matching_sides(fragments: List[Fragment], comp: SidesComparison):
     # fragment1 = draw_red_border(fragments[comp.side1.fragment_idx], comp.side1)  
     # fragment2 = draw_red_border(fragments[comp.side2.fragment_idx], comp.side2)  
+
     fragment1 = rotate_fragment(fragments, comp.side1, 1)
     fragment2 = rotate_fragment(fragments, comp.side2, 2)
     plt.figure(figsize=(4, 3)) 
@@ -40,8 +41,8 @@ def display_new_piece(fragments: List[Fragment], comp: SidesComparison):
 
 ###display the sides colors
 def display_sides_colors(comp):
-    side1_printable_values = comp.reversed_side1_value[np.newaxis, :, :]
-    side2_printable_values = comp.side2.value[np.newaxis, :, :]
+    side1_printable_values = comp.reversed_side1_value[np.newaxis, :]
+    side2_printable_values = comp.side2.value[np.newaxis, :]
     plt.figure(figsize=(6, 1))
     
     plt.subplot(2, 1, 1)
@@ -102,19 +103,26 @@ def display_sides_grads(comp: SidesComparison):
 def display_fragments_characteristics(fragments: List[Fragment], sorted_sides_comparisons: List[SidesComparison]):
 
     for comp in sorted_sides_comparisons:
-        print(f"score: {comp.score}")
-        print(f"is correct: {comp.is_valid_match}")
-        print(f"color score: {comp.color_score} grad score: {comp.grad_score}")
-        print(f"grad presence: {comp.grad_presence} grad match: {comp.grad_match}")
+        if comp.is_valid_match == False:
+            print(f"score: {comp.score}")
+            print(f"is correct: {comp.is_valid_match}")
+            print(f"color score: {comp.color_score} grad score: {comp.grad_score}")
+            print(f"grad presence: {comp.grad_presence} grad match: {comp.grad_match}")
 
-        display_the_fragments_matching_sides(fragments, comp)
+            color_points_distances = comp.reversed_side1_value - comp.side2.value
+            color_score = color_points_distances/ 255
+            color_score =np.linalg.norm(color_score, axis = 1)
+            print(f"max: {max(color_score)} min: {min(color_score)}")
+            print(color_score)
 
-        # display_new_piece(fragments, comp)
+            display_the_fragments_matching_sides(fragments, comp)
 
-        display_sides_colors(comp)
+            display_new_piece(fragments, comp)
 
-        display_two_fragments_grads(fragments, comp)
+            display_sides_colors(comp)
 
-        display_sides_grads(comp)
+            display_two_fragments_grads(fragments, comp)
 
-        print("-----------------------------------------------------------------------------------")
+            display_sides_grads(comp)
+
+            print("-----------------------------------------------------------------------------------")

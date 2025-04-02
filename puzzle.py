@@ -48,9 +48,6 @@ def rotate_fragment(fragments: List[Fragment],side, side_type):
    
     h, w = image.shape[:2]
 
-    # cx, cy = find_centroid(image)
-    # centroid = [cx, cy]
-
     p1 = side.side_indexes_of_fragment[0]
     p2 = side.side_indexes_of_fragment[-1]
 
@@ -67,11 +64,7 @@ def rotate_fragment(fragments: List[Fragment],side, side_type):
     th2 = np.degrees(np.arctan2(y, x))
 
     rotation_angle = th2 - th1
-    # if abs(rotation_angle) < 1: 
-    #     return image
-
-    # if abs(rotation_angle - 180) < 1:
-    #     return cv.flip(image, 1)  
+  
 
     if abs(rotation_angle) < 5:
         return image
@@ -87,37 +80,16 @@ def rotate_fragment(fragments: List[Fragment],side, side_type):
     else:
         print(f"invalid rotation angle {rotation_angle}")
         return 0
-    # plt.imshow(image)
-    # plt.show()
+  
     return image
 
-    # rotation_matrix = cv.getRotationMatrix2D(centroid, rotation_angle, 1)
-    # cos_angle = abs(rotation_matrix[0, 0])
-    # sin_angle = abs(rotation_matrix[0, 1])
 
-    # new_w = int(h * sin_angle + w * cos_angle)
-    # new_h = int(h * cos_angle + w * sin_angle)
-
-    # rotation_matrix[0, 2] += (new_w - w) / 2
-    # rotation_matrix[1, 2] += (new_h - h) / 2
-
-    # rotated_image = cv.warpAffine(image, rotation_matrix, (new_w, new_h))
-    # rotated_image = fix_border(rotated_image)
-
-    # return rotated_image
 
 def two_fragments_merger(fragments: List[Fragment], comp: SidesComparison):
     rotated_fragment1 = rotate_fragment(fragments, comp.side1, 1)
     rotated_fragment2 = rotate_fragment(fragments, comp.side2, 2)
 
-    # h1, w1 = rotated_fragment1.shape[:2]
-    # h2, w2 = rotated_fragment2.shape[:2]
 
-    # target_h = min(h1, h2)
-    # target_w = min(w1, w2)
-
-    # rotated_fragment1 = cv.resize(rotated_fragment1, (target_w, target_h), interpolation=cv.INTER_LINEAR)
-    # rotated_fragment2 = cv.resize(rotated_fragment2, (target_w, target_h), interpolation=cv.INTER_LINEAR)
     new_fragment = np.hstack((rotated_fragment1, rotated_fragment2))
     return new_fragment
 
