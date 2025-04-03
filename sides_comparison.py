@@ -8,11 +8,21 @@ class SidesComparison:
         self.side1 = side1
         self.side2 = side2
 
+
         self.reversed_side1_value = side1.value[::-1]
-        self.color_points_distances = self.reversed_side1_value - side2.value
+        self.color_points_distances = abs(self.reversed_side1_value - side2.value)
         color_score = self.color_points_distances/ 255
-        color_score =np.linalg.norm(color_score, axis = 1)
-        self.color_score = erf(4 * abs(color_score) - 2)/2 + 0.5 ## input[0,1] -> [-2, 2] output[-1,1] -> [0,1]
+
+        if DIFF_GBR == True:
+            grayscale_weights = 3 * np.array([0.2989, 0.5870, 0.1140])
+            color_score *= grayscale_weights
+            color_score =np.linalg.norm(color_score, axis = 1)
+
+        if DIFF_GRAY == True:
+            color_score =np.linalg.norm(color_score, axis = 1)
+
+
+        self.color_score = erf(4 * color_score - 2)/2 + 0.5 ## input[0,1] -> [-2, 2] output[-1,1] -> [0,1]
         self.color_score = np.sum(color_score)/len(self.side1.value)
 
 

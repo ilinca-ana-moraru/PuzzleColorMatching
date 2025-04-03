@@ -11,19 +11,15 @@ COL_NR = 8
 ROW_NR = 8
 
 
-GRAD_GBR = False
-GRAD_GRAY = True
+GRAD_GBR = True
+GRAD_GRAY = False
+
+DIFF_GBR = True
+DIFF_GRAY = False
 
 def sigmoid(x):
     x = 2 * abs(x) - 1
     return 1 / (1 + np.exp(-x))
-
-def grad_func(image):
-    if GRAD_GBR == True:
-        return apply_Grad_GBR(image)
-    if GRAD_GRAY == True:
-        return apply_Grad_Gray(image)
-    
 
 
 def grad_func(image):
@@ -60,7 +56,24 @@ def apply_Grad_Gray(image):
     grad = np.sqrt(dx**2 + dy**2)/5120
     grad[grad<0.1] = 0
 
-    # grad = normalized_sigmoid(grad)
-    # print(f"min {np.min(grad)} max:{np.max(grad)}")
-
     return grad
+
+
+def apply_Grad_On_Joint_Piece(image):
+    middle = image.shape[2]//2
+    image = image[:, :, :3] 
+
+    sobel_filter = np.array([[-1, -2],
+                            [0, 0],
+                            [1, 2]])
+    V = np.zeros((image.shape[0]-2,3))
+    for p in range(image.shape[0]-2):
+        channel_response = np.zeros(3)
+        for c in range(3):
+            patch = image[p:p+3, middle-1:middle+1, c]
+            V[p,c] = np.sum(sobel_filter * patch)/255
+        
+    response = np.sqrt(np.sum(np.mean(V**2, axis = 0)))
+    print(response)
+
+

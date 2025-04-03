@@ -8,6 +8,10 @@ class Fragment:
         self.value = value
         self.fragment_idx = fragment_idx
 
+        plt.imshow(self.value)
+        plt.show()
+        apply_Grad_On_Joint_Piece(value)
+
         # to do: side detection
         # for now, hardcoded
 #--------------------------------------------------------------------
