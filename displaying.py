@@ -33,7 +33,7 @@ def display_the_fragments_matching_sides(fragments: List[Fragment], comp: SidesC
 
 
 def display_new_piece(fragments: List[Fragment], comp: SidesComparison):
-    new_fragment = comp.value
+    new_fragment = two_fragments_merger(fragments, comp.side1, comp.side2)
     plt.figure(figsize=(4, 4)) 
     plt.imshow(new_fragment)
     plt.show()
@@ -106,16 +106,12 @@ def display_fragments_characteristics(fragments: List[Fragment], sorted_sides_co
         # if comp.is_valid_match == False:
         # print(f"score: {comp.score}")
         # print(f"is correct: {comp.is_valid_match}")
-        # print(f"color score: {comp.color_score} grad score: {comp.grad_score}")
-        # print(f"grad presence: {comp.grad_presence} grad match: {comp.grad_match}")
+        # print(f"color score: {comp.color_score}")
+        # print(f"grad presence: {comp.grad_presence}  joint grad match: {comp.merged_grad_score}")
+        # plt.imshow(comp.merged_image)
+        # plt.show()
 
-        # color_points_distances = abs(comp.reversed_side1_value - comp.side2.value)
-        # color_score = color_points_distances/ 255
-        # grayscale_weights = np.array([0.2989, 0.5870, 0.1140])
-        # color_score = np.dot(color_score, grayscale_weights)
-        # print(f"max: {max(color_score)} min: {min(color_score)}")
-        # print(color_score)
-
+        # print(f"DLR: {comp.DLR} DRL: {comp.DRL}")
         display_the_fragments_matching_sides(fragments, comp)
 
         display_new_piece(fragments, comp)

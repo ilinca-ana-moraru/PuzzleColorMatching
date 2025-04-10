@@ -6,3 +6,5 @@ class Side:
         self.side_idx = side_idx
         self.fragment_idx = fragment_idx
 
+    def __str__(self):
+        return (f"Side: fragment_idx={self.fragment_idx}, side_idx={self.side_idx}")
