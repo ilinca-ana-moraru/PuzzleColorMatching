@@ -7,8 +7,8 @@ np.set_printoptions(threshold=np.inf)
 from utils import *
 
 
-COL_NR = 8
-ROW_NR = 8
+COL_NR = 16
+ROW_NR = 16
 
 
 GRAD_GBR = True

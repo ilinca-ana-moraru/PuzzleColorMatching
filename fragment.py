@@ -68,6 +68,8 @@ def divide_image(image_path, output_folder, n, m):
     h, w = rgba_image.shape[:2] 
 
     tile_h, tile_w = h // n, w // m  
+    TILE_H = tile_h
+    TILE_W = tile_w
 
     fragments = []
 
@@ -83,5 +85,5 @@ def divide_image(image_path, output_folder, n, m):
             # print("-------------------------------------------")
             fragments.append(fr)
 
-    return fragments  
+    return fragments, tile_h, tile_w
 
