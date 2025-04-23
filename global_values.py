@@ -7,9 +7,11 @@ np.set_printoptions(threshold=np.inf)
 from utils import *
 
 
-COL_NR = 16
-ROW_NR = 16
+COL_NR = 32
+ROW_NR = 32
 
+TILE_W = None
+TILE_H = None
 
 GRAD_GBR = True
 GRAD_GRAY = False
