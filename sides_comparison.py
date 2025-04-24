@@ -75,3 +75,5 @@ class SidesComparison:
 
 
 
+    def __str__(self):
+        return (f"Sides Comp: Score={self.score} Fragment_idx1={self.side1.fragment_idx}, Side_idx1={self.side1.side_idx}; fragment_idx2={self.side2.fragment_idx}, side_idx2={self.side2.side_idx}")

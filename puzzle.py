@@ -21,8 +21,8 @@ def create_sides_comparisons(fragments: List[Fragment]):
                 for fr_idx2 in range(fr_idx1 + 1, len(fragments)):
                     for side_idx2 in range(len(fragments[fr_idx2].sides)):
                         side2 = fragments[fr_idx2].sides[side_idx2]
-                        
-                        if (side1.side_idx == 2 and side2.side_idx == 0) or (side1.side_idx == 1 and side2.side_idx == 3) and len(side1.value) == len(side2.value):
+                        if len(side1.value) == len(side2.value) and ((side1.side_idx == 2 and side2.side_idx == 0) or (side1.side_idx == 1 and side2.side_idx == 3) \
+                        or (side1.side_idx == 0 and side2.side_idx == 2) or (side1.side_idx == 3 and side2.side_idx == 1)):
                             sides_comparisons.append(SidesComparison(fragments, side1, side2))
                             # print(f"fragment {fr_idx1} side {side_idx1} VS fragment {fr_idx2} side {side_idx2}")
 

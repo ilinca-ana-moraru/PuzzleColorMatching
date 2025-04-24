@@ -7,8 +7,13 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 def check_if_two_fragments_are_vertical(sidesComp):
     if sidesComp.side1.side_idx == 1 and sidesComp.side2.side_idx == 3:
         return True
-    elif sidesComp.side1.side_idx == 2 and sidesComp.side2.side_idx == 0:
+    if sidesComp.side1.side_idx == 3 and sidesComp.side2.side_idx == 1:
         return True
+    if sidesComp.side1.side_idx == 2 and sidesComp.side2.side_idx == 0:
+        return True
+    if sidesComp.side1.side_idx == 0 and sidesComp.side2.side_idx == 2:
+        return True
+
     return False
 
 class assembledGroup:
@@ -229,3 +234,45 @@ def find_pasted_fragment_coords(anchor_side, new_side, anchor_row, anchor_col):
         return None
     return new_fr_row, new_fr_col
 
+
+
+import pandas as pd
+
+def edges_of_groups(groups):
+    data = []
+
+    for group_idx, group in enumerate(groups):
+
+        rows, cols = len(group.grid), len(group.grid[0])
+
+        for i in range(rows):
+            for j in range(cols):
+                if group.grid[i][j] is None:
+                    neighbour_count = group.neighbours_grid[i][j]
+                    if neighbour_count > 0: 
+                        data.append({
+                            'group_idx': group_idx,
+                            'nr_of_neighbours': neighbour_count,
+                            'row': i,
+                            'col': j
+                        })
+
+    df = pd.DataFrame(data)
+    df = df.sort_values(by='nr_of_neighbours', ascending=False).reset_index(drop=True)
+
+    return df
+
+
+def show_all_groups(images, max_cols=8):
+    n = len(images)
+    n_cols = min(n, max_cols)
+    n_rows = (n + max_cols - 1) // max_cols  
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 3, n_rows * 3))
+    axes = axes.flatten()
+    for i, ax in enumerate(axes):
+        if i < n:
+            ax.imshow(images[i])
+        ax.axis('off')
+
+    plt.tight_layout()
+    plt.show()
