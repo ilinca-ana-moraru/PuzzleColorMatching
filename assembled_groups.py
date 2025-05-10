@@ -62,28 +62,62 @@ class assembledGroup:
         neighbours_grid = np.zeros_like(self.grid)
         rows, cols = len(self.grid), len(self.grid[0])
 
-        placed_coords = list(self.fragment_positions.values())
-        if not placed_coords:
+        self.placed_coords = list(self.fragment_positions.values())
+        if not self.placed_coords:
             print("No fragments to display.")
             return
 
-        min_row = max(min(pos[0] for pos in placed_coords) - 1 , 0)
-        max_row = min(max(pos[0] for pos in placed_coords) + 1, rows - 1) 
-        min_col = max(min(pos[1] for pos in placed_coords) - 1, 0)
-        max_col = min(max(pos[1] for pos in placed_coords) + 1, cols - 1)
+        self.min_row = max(min(pos[0] for pos in self.placed_coords) - 1 , 0)
+        self.max_row = min(max(pos[0] for pos in self.placed_coords) + 1, rows - 1) 
+        self.min_col = max(min(pos[1] for pos in self.placed_coords) - 1, 0)
+        self.max_col = min(max(pos[1] for pos in self.placed_coords) + 1, cols - 1)
 
-        for i in range(min_row, max_row + 1):
-            for j in range(min_col, max_col + 1):
+        for i in range(self.min_row, self.max_row + 1):
+            for j in range(self.min_col, self.max_col + 1):
                 if self.grid[i][j] is None:
-                    if i - 1 >= min_row and self.grid[i - 1][j] is not None:
+                    if i - 1 >= self.min_row and self.grid[i - 1][j] is not None:
                         neighbours_grid[i][j] +=1
-                    if i + 1 <= max_row and self.grid[i + 1][j] is not None:
+                    if i + 1 <= self.max_row and self.grid[i + 1][j] is not None:
                         neighbours_grid[i][j] +=1
-                    if j - 1 >= min_col and self.grid[i][j - 1] is not None:
+                    if j - 1 >= self.min_col and self.grid[i][j - 1] is not None:
                         neighbours_grid[i][j] +=1
-                    if j + 1 <= max_col and self.grid[i][j + 1] is not None:
+                    if j + 1 <= self.max_col and self.grid[i][j + 1] is not None:
                         neighbours_grid[i][j] +=1
         self.neighbours_grid = neighbours_grid
+
+    def update_neighbours_grid_position(self, i, j):
+        self.neighbours_grid[i][j] = 0
+
+        if i - 1 >= self.min_row and self.grid[i - 1][j] is not None:
+            self.neighbours_grid[i][j] +=1
+        if i + 1 <= self.max_row and self.grid[i + 1][j] is not None:
+            self.neighbours_grid[i][j] +=1
+        if j - 1 >= self.min_col and self.grid[i][j - 1] is not None:
+            self.neighbours_grid[i][j] +=1
+        if j + 1 <= self.max_col and self.grid[i][j + 1] is not None:
+            self.neighbours_grid[i][j] +=1
+
+
+    def update_neighbours_grid(self, new_fr_i, new_fr_j):
+        
+        self.placed_coords = list(self.fragment_positions.values())
+        if not self.placed_coords:
+            print("No fragments to display.")
+            return
+        rows, cols = len(self.grid), len(self.grid[0])
+
+        self.min_row = max(min(pos[0] for pos in self.placed_coords) - 1 , 0)
+        self.max_row = min(max(pos[0] for pos in self.placed_coords) + 1, rows - 1) 
+        self.min_col = max(min(pos[1] for pos in self.placed_coords) - 1, 0)
+        self.max_col = min(max(pos[1] for pos in self.placed_coords) + 1, cols - 1)
+
+        self.neighbours_grid[new_fr_i][new_fr_j] = 0
+
+        self.update_neighbours_grid_position(new_fr_i - 1, new_fr_j)
+        self.update_neighbours_grid_position(new_fr_i + 1, new_fr_j)
+        self.update_neighbours_grid_position(new_fr_i, new_fr_j - 1)
+        self.update_neighbours_grid_position(new_fr_i, new_fr_j + 1)
+
 
     def show(self, fragments):
         fig, ax = plt.subplots()
