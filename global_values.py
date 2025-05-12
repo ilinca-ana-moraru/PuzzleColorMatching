@@ -19,6 +19,7 @@ GRAD_GRAY = False
 DIFF_GBR = True
 DIFF_GRAY = False
 
+SYMMETRIC_COMPARISONS = []
 
 
 def grad_func(image):
