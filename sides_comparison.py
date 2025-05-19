@@ -8,10 +8,7 @@ class SidesComparison:
         self.side1 = side1
         self.side2 = side2
 
-
-        # self.merged_image = two_fragments_edge_merger(self.side1, self.side2)
-        # self.merged_grad_score = apply_Grad_On_Joint_Piece(self.merged_image)
-
+        self.buddy_score = None
 
         self.reversed_side1_value = side1.value[::-1]
         self.color_points_distances = abs(self.reversed_side1_value - side2.value)
@@ -41,7 +38,6 @@ class SidesComparison:
 
         self.grad_presence = np.sum(erf(4 * self.reversed_side1_grad - 2)/2 + 0.5 + erf(4 * side2.grad - 2)/2 + 0.5)
 
-        # self.merged_grad_score = self.merged_grad_score/ (self.grad_presence + 0.000001)
         self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
 
         self.score = 1/(self.grad_presence + 0.000001)*np.sqrt(( self.grad_match)**2  + self.color_score**2)

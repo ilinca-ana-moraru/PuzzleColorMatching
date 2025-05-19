@@ -368,3 +368,110 @@ def edges_of_groups(groups):
 
     return df
 
+def find_best_candidate_for_empty_spot(row, groups):
+    anchor_group_idx = row['group_idx']
+    empty_row, empty_col = row['row'], row['col']
+    g = groups[anchor_group_idx]
+
+    neighbours = [
+        g.grid[empty_row - 1][empty_col] if empty_row > 0 else None,
+        g.grid[empty_row][empty_col + 1] if empty_col + 1 < g.col_nr else None,
+        g.grid[empty_row + 1][empty_col] if empty_row + 1 < g.row_nr else None,
+        g.grid[empty_row][empty_col - 1] if empty_col > 0 else None
+    ]
+
+    best_score = float('inf')
+    best_comp = None
+    best_fragment_idx = None
+    best_pasted_group_idx = None
+
+    for pasted_group_idx, pasted_group in enumerate(groups):
+        if pasted_group_idx == anchor_group_idx:
+            continue
+
+        for fr_idx in pasted_group.used_fragments:
+            score = 0
+            valid = False
+            comps = []
+
+            if neighbours[0] is not None:
+                comp = get_comparison(neighbours[0], fr_idx, 2, 0)
+                if comp: score += comp.score; comps.append(comp); valid = True
+            if neighbours[2] is not None:
+                comp = get_comparison(neighbours[2], fr_idx, 0, 2)
+                if comp: score += comp.score; comps.append(comp); valid = True
+            if neighbours[3] is not None:
+                comp = get_comparison(neighbours[3], fr_idx, 1, 3)
+                if comp: score += comp.score; comps.append(comp); valid = True
+            if neighbours[1] is not None:
+                comp = get_comparison(neighbours[1], fr_idx, 3, 1)
+                if comp: score += comp.score; comps.append(comp); valid = True
+            
+
+            if valid:
+                comp = comps[0]
+                score = calculate_all_group_matchings_scores(comp, groups[anchor_group_idx], groups[pasted_group_idx])
+                if check_groups_shapes_for_merging(comp, groups[anchor_group_idx], groups[pasted_group_idx]) and \
+                   does_merge_fit_within_bounds(comp, groups[anchor_group_idx], groups[pasted_group_idx]):
+                    if score < best_score:
+                        best_score = score
+                        best_comp = comp
+                        best_fragment_idx = fr_idx
+                        best_pasted_group_idx = pasted_group_idx
+
+    if best_comp:
+        return {
+            'anchor_group_idx': anchor_group_idx,
+            'empty_spot_neighbours': neighbours,
+            'pasted_group_idx': best_pasted_group_idx,
+            'fragment_idx': best_fragment_idx,
+            'score': best_score,
+            'comp': best_comp
+        }
+    return None
+
+
+def solve_groups(groups, fragments, fragment_idx_to_group_idx):
+    while len(groups) > 1:
+        edges_of_groups_df = edges_of_groups(groups)
+        
+
+        if edges_of_groups_df.empty:
+            print("No empty spots with neighbours left.")
+            break
+
+        max_neighbours = edges_of_groups_df['nr_of_neighbours'][0] + 1
+
+        merge_candidates = []
+        while not merge_candidates and max_neighbours > 1:
+            max_neighbours -= 1
+            for _, row in edges_of_groups_df.iterrows():
+                if row['nr_of_neighbours'] == max_neighbours:
+                    candidate = find_best_candidate_for_empty_spot(row, groups)
+                    if candidate:
+                        merge_candidates.append(candidate)
+
+        if not merge_candidates:
+            print("No valid merge candidates found.")
+            break
+
+        merge_candidates.sort(key=lambda c: c['score'])
+
+        while merge_candidates:
+            best = merge_candidates.pop(0)
+            comp = best['comp']
+            anchor_idx = best['anchor_group_idx']
+            pasted_idx = best['pasted_group_idx']
+
+            if check_groups_shapes_for_merging(comp, groups[anchor_idx], groups[pasted_idx]) and \
+               does_merge_fit_within_bounds(comp, groups[anchor_idx], groups[pasted_idx]):
+
+                merge_groups(comp, fragments, fragment_idx_to_group_idx, groups[anchor_idx], groups[pasted_idx])
+                update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_idx)
+                print(f"Merged group {anchor_idx} and {pasted_idx} using: {comp}")
+                break
+        else:
+            print("No suitable merge candidate found after filtering.")
+            break
+
+    return groups, fragments, fragment_idx_to_group_idx

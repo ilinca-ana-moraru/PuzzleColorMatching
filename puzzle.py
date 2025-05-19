@@ -111,21 +111,8 @@ def merge_fragments_two_by_two(fragments: List[Fragment], sides_comparisons: Lis
     return new_fragments
 
 
-def create_global_sides_array(fragments: List[Fragment]):
-    global_sides = []
-    for fr in fragments:
-        for s in fr.sides:
-            global_sides.append(s)
-    return global_sides
 
-def order_matchings_for_each_side(fragments: List[Fragment], sides_comparisons: List[SidesComparison]):
 
-    matches_idx_for_sides = [[] for _ in range(len(fragments)*4)]
-
-    for idx, comp in enumerate(sides_comparisons):
-        matches_idx_for_sides[comp.side1.fragment_idx*4 + comp.side1.side_idx].append(idx)
-        matches_idx_for_sides[comp.side2.fragment_idx*4 + comp.side2.side_idx].append(idx)
-    return matches_idx_for_sides
 
 
 
