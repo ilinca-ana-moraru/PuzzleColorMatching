@@ -12,8 +12,8 @@ def get_comparison(frag1, frag2, side1, side2):
     comp = global_values.SYMMETRIC_COMPARISONS[frag1][frag2][side1][side2]
     if comp is None:
         comp = global_values.SYMMETRIC_COMPARISONS[frag2][frag1][side2][side1]  
-    if comp is None:
-        print(f"Comparison missing for f1={frag1}, f2={frag2}, s1={side1}, s2={side2}")
+    # if comp is None:
+        # print(f"Comparison missing for f1={frag1}, f2={frag2}, s1={side1}, s2={side2}")
 
     return comp
 
@@ -139,7 +139,7 @@ def check_groups_shapes_for_merging(comp: SidesComparison, anchor_group: Group, 
 
         if 0 < new_row < anchor_group.row_nr and 0 < new_col < anchor_group.col_nr:
             if anchor_group.grid[new_row][new_col] is not None:
-                print("impossible merging: incompatible group shapes")
+                # print("impossible merging: incompatible group shapes")
                 return False
     return True
     
@@ -175,8 +175,8 @@ def does_merge_fit_within_bounds(comp: SidesComparison, anchor_group: Group, pas
     height = max_row - min_row
     width = max_col - min_col
 
-    if height  > global_values.ROW_NR or width > global_values.COL_NR:  
-        print(f"Merge would exceed puzzle size")
+    if height + 1 > global_values.ROW_NR or width + 1 > global_values.COL_NR:  
+        # print(f"Merge would exceed puzzle size")
         return False
     return True
 
@@ -218,6 +218,42 @@ def check_all_group_matchings_scores(comp: SidesComparison, anchor_group: Group,
         return False
     print(total_score)
     return True
+
+
+def calculate_all_group_matchings_scores(comp: SidesComparison, anchor_group: Group, pasted_group: Group):
+    anchor_side = comp.side1
+    pasted_side = comp.side2
+
+    side_row_offset, side_col_offset = find_pasted_group_moving_distance(anchor_side, pasted_side)
+    anchor_row, anchor_col = anchor_group.fragment_positions[anchor_side.fragment_idx]
+    pasted_row, pasted_col = pasted_group.fragment_positions[pasted_side.fragment_idx]
+    row_offset = anchor_row + side_row_offset - pasted_row
+    col_offset = anchor_col + side_col_offset - pasted_col
+
+    total_score = 0.0
+    total_matchings = 0
+    directions = [(-1, 0, 0, 2), (1, 0, 2, 0), (0, -1, 3, 1), (0, 1, 1, 3)]
+
+    for fr_idx in pasted_group.used_fragments:
+        pr, pc = pasted_group.fragment_positions[fr_idx]
+        new_r = pr + row_offset
+        new_c = pc + col_offset
+
+        for dr, dc, side_1, side_2 in directions:
+            nr = new_r + dr
+            nc = new_c + dc
+            for anchor_idx in anchor_group.used_fragments:
+                ar, ac = anchor_group.fragment_positions[anchor_idx]
+                if ar == nr and ac == nc:
+                    comp = get_comparison(fr_idx, anchor_idx, side_1, side_2)
+                    if comp:
+                        total_score += comp.score
+                        total_matchings += 1
+
+    total_score /= total_matchings
+    return total_score
+
+
 
 def update_after_merge(groups: List[Group],fragments, fragment_idx_to_group_idx, pasted_group_idx):
     for fr_idx in range(len(fragments)):
@@ -274,17 +310,20 @@ def merge_groups(comp: SidesComparison, fragments, fragment_idx_to_group_idx, an
         anchor_group.update_neighbours_grid_after_new_merge(row, col)
     
 
-def show_all_groups(groups, fragments, max_cols=8):
+def show_all_groups(groups, fragments, fr_idx_to_group_idx, max_cols=8):
     images = []
+    group_indices = []
+
     for gr in groups:
         if len(gr.used_fragments) > 1:
             image = gr.show_group(fragments)
             images.append(image)
+            gr_idx = fr_idx_to_group_idx[gr.used_fragments[0]]
+            group_indices.append(gr_idx)
 
     n = len(images)
     n_cols = min(n, max_cols)
-    n_rows = (n + max_cols - 1) // max_cols  
-
+    n_rows = (n + max_cols - 1) // max_cols
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 3, n_rows * 3))
 
     if isinstance(axes, np.ndarray):
@@ -295,10 +334,12 @@ def show_all_groups(groups, fragments, max_cols=8):
     for i, ax in enumerate(axes):
         if i < n:
             ax.imshow(images[i])
+            ax.set_title(f"Group {group_indices[i]}")
         ax.axis('off')
 
     plt.tight_layout()
     plt.show()
+
 
 
 def edges_of_groups(groups):
@@ -312,7 +353,7 @@ def edges_of_groups(groups):
             for j in range(cols):
                 if group.grid[i][j] is None:
                     neighbour_count = group.neighbours_grid[i][j]
-                    if neighbour_count > 1: 
+                    if neighbour_count > 0: 
                         data.append({
                             'group_idx': group_idx,
                             'nr_of_neighbours': neighbour_count,
