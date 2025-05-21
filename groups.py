@@ -275,7 +275,7 @@ def check_all_group_matchings_scores(shifted_anchor_group: Group, shifted_pasted
                 if anchor_fr_idx:
                     neighbor_comp = get_comparison(pasted_fr_idx, anchor_fr_idx, side1, side2)
                     if neighbor_comp:
-                        if neighbor_comp.score > 0.2:
+                        if neighbor_comp.score > global_values.IMAGE_TH:
                             return False
                         total_score += neighbor_comp.score
                         total_matchings += 1
@@ -284,7 +284,7 @@ def check_all_group_matchings_scores(shifted_anchor_group: Group, shifted_pasted
         return False
 
     average_score = total_score / total_matchings
-    if average_score > 0.08:
+    if average_score > global_values.GROUP_TH:
         return False
     
     return True
@@ -476,24 +476,29 @@ def solve_groups(groups, fragments, fragment_idx_to_group_idx):
             print("No empty spots with neighbours left.")
             break
 
-        max_neighbours = edges_of_groups_df['nr_of_neighbours'][0] + 1
+        # max_neighbours = edges_of_groups_df['nr_of_neighbours'][0] + 1
 
+        # merge_candidates = []
+        # while not merge_candidates and max_neighbours > 1:
+        #     max_neighbours -= 1
+        #     for _, row in edges_of_groups_df.iterrows():
+        #         if row['nr_of_neighbours'] == max_neighbours:
+        #             candidate = find_best_candidate_for_empty_spot(row, groups)
+        #             if candidate:
+        #                 merge_candidates.append(candidate)
         merge_candidates = []
-        while not merge_candidates and max_neighbours > 1:
-            max_neighbours -= 1
-            for _, row in edges_of_groups_df.iterrows():
-                if row['nr_of_neighbours'] == max_neighbours:
-                    candidate = find_best_candidate_for_empty_spot(row, groups)
-                    if candidate:
-                        merge_candidates.append(candidate)
+        for _, row in edges_of_groups_df.iterrows():
+            candidate = find_best_candidate_for_empty_spot(row, groups)
+            if candidate:
+                merge_candidates.append(candidate)
+
 
         if not merge_candidates:
             print("No valid merge candidates found.")
             break
 
         merge_candidates.sort(key=lambda c: c['score'])
-        
-        print([round(c['score'], 6) for c in merge_candidates])
+        # print([round(c['score'], 6) for c in merge_candidates])
         while merge_candidates:
             best = merge_candidates.pop(0)
             comp = best['comp']
@@ -506,7 +511,7 @@ def solve_groups(groups, fragments, fragment_idx_to_group_idx):
                 if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
                     groups[anchor_group_idx] = merge_groups(shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
                     update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
-                    print(f"Merged group {anchor_group_idx} and {pasted_group_idx} using: {comp}")
+                    print(f"Merged group {anchor_group_idx} and {pasted_group_idx} with total score: {best['score']} using: {comp}")
                     break
         else:
             print("No suitable merge candidate found after filtering.")

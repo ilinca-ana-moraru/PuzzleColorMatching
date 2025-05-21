@@ -10,6 +10,9 @@ from utils import *
 COL_NR = 32
 ROW_NR = 32
 
+IMAGE_TH = 0.2
+GROUP_TH = 0.08
+
 TILE_W = None
 TILE_H = None
 
