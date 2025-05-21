@@ -7,7 +7,7 @@ class Fragment:
     def __init__(self,value, fragment_idx):
         self.value = value
         self.fragment_idx = fragment_idx
-
+        self.rotation = 0
         # to do: side detection
         # for now, hardcoded
 #--------------------------------------------------------------------
@@ -57,7 +57,7 @@ class Fragment:
             side_value = np.squeeze(rgb_values[side_indexes[:,0],side_indexes[:,1]]) 
             side_grad = self.grad[side_indexes[:,0],side_indexes[:,1]]
             first_corner_idx_in_contour = second_corner_idx_in_contour
-            self.sides.append(Side(side_value, side_grad, side_indexes, first_corner_idx, self.fragment_idx))
+            self.sides.append(Side(side_value, side_grad, side_indexes, first_corner_idx, self.fragment_idx, self.rotation))
     
 
 def divide_image(image_path, output_folder, n, m):

@@ -6,7 +6,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from typing import List
 from sides_comparison import SidesComparison
 import pandas as pd
-
+import cv2 as cv
+import copy
 
 def get_comparison(frag1, frag2, side1, side2):
     comp = global_values.SYMMETRIC_COMPARISONS[frag1][frag2][side1][side2]
@@ -102,6 +103,46 @@ class Group:
 
 
 
+def rotate_fragment(fragment, rotation):
+    
+    image = fragment.value
+    plt.imshow(image)
+    plt.show()
+    if rotation == 1:
+        image = cv.rotate(image, cv.ROTATE_90_CLOCKWISE)
+    elif rotation == 2:
+        image = cv.rotate(image, cv.ROTATE_180)
+    elif rotation == 3:
+        image = cv.rotate(image, cv.ROTATE_90_COUNTERCLOCKWISE)
+    plt.imshow(image)
+    plt.show()
+
+def find_pasted_group_moving_distance_and_rotation(anchor_side, pasted_side):  
+    anchor_side_orientation = (anchor_side.side_idx + anchor_side.rotation) % 4
+    pasted_side_orientation = (pasted_side.side_idx + pasted_side.side_idx) % 4
+
+    row_dist = 0
+    col_dist = 0
+    pasted_side_new_rotation = 0
+
+    if anchor_side_orientation == 0:
+        row_col -= 1
+        pasted_side_new_rotation = (4 + 2 - pasted_side_new_rotation) % 4
+
+    elif anchor_side_orientation == 1:
+        col_dist += 1
+        pasted_side_new_rotation = (4 + 3 - pasted_side_orientation) % 4
+
+    elif anchor_side_orientation == 2:
+        row_dist += 1
+        pasted_side_new_rotation = (4 - pasted_side_orientation) % 4
+
+    else:
+        col_dist -= 1
+        pasted_side_new_rotation = (4 + 1 - pasted_side_orientation) % 4
+    
+    return row_dist, col_dist, pasted_side_new_rotation
+
 
 def find_pasted_group_moving_distance(anchor_side, pasted_side):  
 
@@ -121,139 +162,157 @@ def find_pasted_group_moving_distance(anchor_side, pasted_side):
     return row_dist, col_dist
 
 
-def check_groups_shapes_for_merging(comp: SidesComparison, anchor_group: Group, pasted_group: Group):
-    anchor_side = comp.side1
-    pasted_side = comp.side2
 
-    side_row_offset, side_col_offset = find_pasted_group_moving_distance(anchor_side, pasted_side)
-    anchor_row, anchor_col = anchor_group.fragment_positions[anchor_side.fragment_idx]
-    pasted_row, pasted_col = pasted_group.fragment_positions[pasted_side.fragment_idx]
-
-    row_dist = anchor_row + side_row_offset - pasted_row
-    col_dist = anchor_col + side_col_offset - pasted_col
-
-    for fr_idx in pasted_group.used_fragments:
-        current_row, current_col = pasted_group.fragment_positions[fr_idx]
-        new_row = current_row + row_dist
-        new_col = current_col + col_dist
-
-        if 0 < new_row < anchor_group.row_nr and 0 < new_col < anchor_group.col_nr:
-            if anchor_group.grid[new_row][new_col] is not None:
-                # print("impossible merging: incompatible group shapes")
-                return False
-    return True
-    
-
-def does_merge_fit_within_bounds(comp: SidesComparison, anchor_group: Group, pasted_group: Group):
+def simulate_merge_positions(comp: SidesComparison, anchor_group: Group, pasted_group: Group):
+    anchor_copy = copy.deepcopy(anchor_group)
+    pasted_copy = copy.deepcopy(pasted_group)
 
     anchor_side = comp.side1
     pasted_side = comp.side2
 
-    side_row_offset, side_col_offset = find_pasted_group_moving_distance(anchor_side, pasted_side)
-    anchor_row, anchor_col = anchor_group.fragment_positions[anchor_side.fragment_idx]
-    pasted_row, pasted_col = pasted_group.fragment_positions[pasted_side.fragment_idx]
-    row_offset = anchor_row + side_row_offset - pasted_row
-    col_offset = anchor_col + side_col_offset - pasted_col
+    offset_row, offset_col = find_pasted_group_moving_distance(anchor_side, pasted_side)
 
-    all_positions = []
+    anchor_row, anchor_col = anchor_copy.fragment_positions[anchor_side.fragment_idx]
+    pasted_row, pasted_col = pasted_copy.fragment_positions[pasted_side.fragment_idx]
+    row_offset = anchor_row + offset_row - pasted_row
+    col_offset = anchor_col + offset_col - pasted_col
 
-    for fr_idx in anchor_group.used_fragments:
-        all_positions.append(anchor_group.fragment_positions[fr_idx])
+    for fr_idx in pasted_copy.used_fragments:
+        row, col = pasted_copy.fragment_positions[fr_idx]
+        pasted_copy.fragment_positions[fr_idx] = [row + row_offset, col + col_offset]
 
-    for fr_idx in pasted_group.used_fragments:
-        pr, pc = pasted_group.fragment_positions[fr_idx]
-        all_positions.append([pr + row_offset, pc + col_offset])
-
-    all_rows = [r for r, _ in all_positions]
-    all_cols = [c for _, c in all_positions]
+    all_rows = [row for row, col in anchor_copy.fragment_positions.values()] + \
+               [row for row, col in pasted_copy.fragment_positions.values()]
+    all_cols = [col for row, col in anchor_copy.fragment_positions.values()] + \
+               [col for row, col in pasted_copy.fragment_positions.values()]
 
     min_row = min(all_rows)
-    max_row = max(all_rows)
     min_col = min(all_cols)
+    max_row = max(all_rows)
     max_col = max(all_cols)
 
-    height = max_row - min_row
-    width = max_col - min_col
+    anchor_shift_r = 1 - min_row
+    anchor_shift_c = 1 - min_col
 
-    if height + 1 > global_values.ROW_NR or width + 1 > global_values.COL_NR:  
+    for fr_idx in anchor_copy.fragment_positions:
+        r, c = anchor_copy.fragment_positions[fr_idx]
+        anchor_copy.fragment_positions[fr_idx] = [r + anchor_shift_r, c + anchor_shift_c]
+
+    for fr_idx in pasted_copy.fragment_positions:
+        r, c = pasted_copy.fragment_positions[fr_idx]
+        pasted_copy.fragment_positions[fr_idx] = [r + anchor_shift_r, c + anchor_shift_c]
+
+
+    all_rows = [row for row, col in anchor_copy.fragment_positions.values()] + \
+               [row for row, col in pasted_copy.fragment_positions.values()]
+    all_cols = [col for row, col in anchor_copy.fragment_positions.values()] + \
+               [col for row, col in pasted_copy.fragment_positions.values()]
+
+    min_row = min(all_rows)
+    min_col = min(all_cols)
+    max_row = max(all_rows)
+    max_col = max(all_cols)
+
+    anchor_copy.row_nr = max_row - min_row + 3 
+    anchor_copy.col_nr = max_col - min_col + 3
+    pasted_copy.row_nr = max_row - min_row + 3 
+    pasted_copy.col_nr = max_col - min_col + 3
+
+    
+
+    anchor_copy.grid = [[None for _ in range(anchor_copy.col_nr)] for _ in range(anchor_copy.row_nr)]
+    anchor_copy.neighbours_grid = [[0 for _ in range(anchor_copy.col_nr)] for _ in range(anchor_copy.row_nr)]
+
+    pasted_copy.grid = [[None for _ in range(pasted_copy.col_nr)] for _ in range(pasted_copy.row_nr)]
+    pasted_copy.neighbours_grid = [[0 for _ in range(pasted_copy.col_nr)] for _ in range(pasted_copy.row_nr)]
+
+    for fr_idx in anchor_copy.fragment_positions:
+        row, col = anchor_copy.fragment_positions[fr_idx]
+        anchor_copy.grid[row][col] = fr_idx
+
+    for fr_idx in pasted_copy.fragment_positions:
+        row, col = pasted_copy.fragment_positions[fr_idx]
+        pasted_copy.grid[row][col] = fr_idx
+
+    return anchor_copy, pasted_copy
+
+def check_groups_shapes_for_merging(shifted_anchor_group: Group, shifted_pasted_group: Group):
+
+    for fr_idx in shifted_pasted_group.used_fragments:
+        row, col = shifted_pasted_group.fragment_positions[fr_idx]
+
+        if shifted_anchor_group.grid[row][col] is not None:
+            # print("impossible merging: incompatible group shapes")
+            return False
+    return True
+    
+    
+
+def does_merge_fit_within_bounds(shifted_anchor_group: Group):
+
+    if shifted_anchor_group.row_nr - 2 > global_values.ROW_NR:
+        # print(f"Merge would exceed puzzle size")
+        return False
+    if shifted_anchor_group.col_nr - 2  > global_values.COL_NR:  
         # print(f"Merge would exceed puzzle size")
         return False
     return True
 
 
-def check_all_group_matchings_scores(comp: SidesComparison, anchor_group: Group, pasted_group: Group):
-    anchor_side = comp.side1
-    pasted_side = comp.side2
-
-    side_row_offset, side_col_offset = find_pasted_group_moving_distance(anchor_side, pasted_side)
-    anchor_row, anchor_col = anchor_group.fragment_positions[anchor_side.fragment_idx]
-    pasted_row, pasted_col = pasted_group.fragment_positions[pasted_side.fragment_idx]
-    row_offset = anchor_row + side_row_offset - pasted_row
-    col_offset = anchor_col + side_col_offset - pasted_col
-
+def check_all_group_matchings_scores(shifted_anchor_group: Group, shifted_pasted_group: Group):
     total_score = 0.0
     total_matchings = 0
     directions = [(-1, 0, 0, 2), (1, 0, 2, 0), (0, -1, 3, 1), (0, 1, 1, 3)]
 
-    for fr_idx in pasted_group.used_fragments:
-        pr, pc = pasted_group.fragment_positions[fr_idx]
-        new_r = pr + row_offset
-        new_c = pc + col_offset
+    for pasted_fr_idx in shifted_pasted_group.used_fragments:
+        row, col = shifted_pasted_group.fragment_positions[pasted_fr_idx]
 
-        for dr, dc, side_1, side_2 in directions:
-            nr = new_r + dr
-            nc = new_c + dc
-            for anchor_idx in anchor_group.used_fragments:
-                ar, ac = anchor_group.fragment_positions[anchor_idx]
-                if ar == nr and ac == nc:
-                    comp = get_comparison(fr_idx, anchor_idx, side_1, side_2)
-                    if comp:
-                        if comp.score > 0.2:
+        for neighbour_row_offset, neighbour_col_offset, side1, side2 in directions:
+            neighbor_row = row + neighbour_row_offset
+            neighbor_col = col + neighbour_col_offset
+            if neighbor_row >= 0 and  neighbor_row <= shifted_anchor_group.row_nr and neighbor_col >= 0 and  neighbor_col <= shifted_anchor_group.col_nr:
+                anchor_fr_idx = shifted_anchor_group.grid[neighbor_row][neighbor_col]
+                if anchor_fr_idx:
+                    neighbor_comp = get_comparison(pasted_fr_idx, anchor_fr_idx, side1, side2)
+                    if neighbor_comp:
+                        if neighbor_comp.score > 0.2:
                             return False
-                        total_score += comp.score
+                        total_score += neighbor_comp.score
                         total_matchings += 1
 
-    total_score /= total_matchings
-    if total_score > 0.08:
+    if total_matchings == 0:
         return False
-    print(total_score)
+
+    average_score = total_score / total_matchings
+    if average_score > 0.08:
+        return False
+    
     return True
 
-
-def calculate_all_group_matchings_scores(comp: SidesComparison, anchor_group: Group, pasted_group: Group):
-    anchor_side = comp.side1
-    pasted_side = comp.side2
-
-    side_row_offset, side_col_offset = find_pasted_group_moving_distance(anchor_side, pasted_side)
-    anchor_row, anchor_col = anchor_group.fragment_positions[anchor_side.fragment_idx]
-    pasted_row, pasted_col = pasted_group.fragment_positions[pasted_side.fragment_idx]
-    row_offset = anchor_row + side_row_offset - pasted_row
-    col_offset = anchor_col + side_col_offset - pasted_col
+def calculate_all_group_matchings_scores(shifted_anchor_group: Group, shifted_pasted_group: Group):
 
     total_score = 0.0
     total_matchings = 0
     directions = [(-1, 0, 0, 2), (1, 0, 2, 0), (0, -1, 3, 1), (0, 1, 1, 3)]
 
-    for fr_idx in pasted_group.used_fragments:
-        pr, pc = pasted_group.fragment_positions[fr_idx]
-        new_r = pr + row_offset
-        new_c = pc + col_offset
+    for pasted_fr_idx in shifted_pasted_group.used_fragments:
+        row, col = shifted_pasted_group.fragment_positions[pasted_fr_idx]
 
-        for dr, dc, side_1, side_2 in directions:
-            nr = new_r + dr
-            nc = new_c + dc
-            for anchor_idx in anchor_group.used_fragments:
-                ar, ac = anchor_group.fragment_positions[anchor_idx]
-                if ar == nr and ac == nc:
-                    comp = get_comparison(fr_idx, anchor_idx, side_1, side_2)
-                    if comp:
-                        total_score += comp.score
+        for neighbour_row_offset, neighbour_col_offset, side1, side2 in directions:
+            neighbor_row = row + neighbour_row_offset
+            neighbor_col = col + neighbour_col_offset
+            if neighbor_row >= 0 and  neighbor_row <= shifted_anchor_group.row_nr and neighbor_col >= 0 and  neighbor_col <= shifted_anchor_group.col_nr:
+                anchor_fr_idx = shifted_anchor_group.grid[neighbor_row][neighbor_col]
+                if anchor_fr_idx:
+                    neighbor_comp = get_comparison(pasted_fr_idx, anchor_fr_idx, side1, side2)
+                    if neighbor_comp:
+                        total_score += neighbor_comp.score
                         total_matchings += 1
 
-    total_score /= total_matchings
-    return total_score
-
-
+    if total_matchings == 0:
+        return False
+    average_score = total_score / total_matchings
+    return average_score
 
 def update_after_merge(groups: List[Group],fragments, fragment_idx_to_group_idx, pasted_group_idx):
     for fr_idx in range(len(fragments)):
@@ -262,60 +321,33 @@ def update_after_merge(groups: List[Group],fragments, fragment_idx_to_group_idx,
     
     del groups[pasted_group_idx]
 
-def merge_groups(comp: SidesComparison, fragments, fragment_idx_to_group_idx, anchor_group: Group, pasted_group: Group):
-    anchor_side = comp.side1
-    pasted_side = comp.side2
-
-    side_row_offset, side_col_offset = find_pasted_group_moving_distance(anchor_side, pasted_side)
-    anchor_row, anchor_col = anchor_group.fragment_positions[anchor_side.fragment_idx]
-    pasted_row, pasted_col = pasted_group.fragment_positions[pasted_side.fragment_idx]
-    row_dist_pasted_group = anchor_row + side_row_offset - pasted_row
-    col_dist_pasted_group = anchor_col + side_col_offset - pasted_col
-
-    for fr_idx in pasted_group.used_fragments:
-        old_row, old_col = pasted_group.fragment_positions[fr_idx]
-        anchor_group.fragment_positions[fr_idx] = [old_row + row_dist_pasted_group, old_col + col_dist_pasted_group]
-
-    all_rows = [r for r, c in anchor_group.fragment_positions.values()]
-    all_cols = [c for r, c in anchor_group.fragment_positions.values()]
-    min_row = min(all_rows)
-    min_col = min(all_cols)
-    max_row = max(all_rows)
-    max_col = max(all_cols)
-
-    row_dist_group = 1 - min_row 
-    col_dist_group = 1 - min_col  
-
-    anchor_group.row_nr = max_row - min_row + 3 
-    anchor_group.col_nr = max_col - min_col + 3
-
-    for fr_idx in anchor_group.fragment_positions:
-        row, col = anchor_group.fragment_positions[fr_idx]
-        anchor_group.fragment_positions[fr_idx] = [row + row_dist_group, col + col_dist_group]
-
-    new_grid = [[None for _ in range(anchor_group.col_nr)] for _ in range(anchor_group.row_nr)]
-    new_neigh_grid = [[0 for _ in range(anchor_group.col_nr)] for _ in range(anchor_group.row_nr)]
-
-    anchor_group.used_fragments.extend(pasted_group.used_fragments)
-    for fr_idx in anchor_group.fragment_positions:
-        row, col = anchor_group.fragment_positions[fr_idx]
-        new_grid[row][col] = fr_idx
-        fragment_idx_to_group_idx[fr_idx] = fragment_idx_to_group_idx[anchor_group.used_fragments[0]] 
-
-    anchor_group.grid = new_grid
-    anchor_group.neighbours_grid = new_neigh_grid
-
-    for fr_idx in anchor_group.used_fragments:
-        row, col = anchor_group.fragment_positions[fr_idx]
-        anchor_group.update_neighbours_grid_after_new_merge(row, col)
     
 
-def show_all_groups(groups, fragments, fr_idx_to_group_idx, max_cols=8):
+def merge_groups(shifted_anchor_group: Group, shifted_pasted_group: Group, fragment_idx_to_group_idx):
+
+    for fr_idx, pos in shifted_pasted_group.fragment_positions.items():
+        shifted_anchor_group.fragment_positions[fr_idx] = pos
+
+
+    shifted_anchor_group.used_fragments.extend(shifted_pasted_group.used_fragments)
+
+    for fr_idx in shifted_pasted_group.fragment_positions:
+        r, c = shifted_pasted_group.fragment_positions[fr_idx]
+        
+        shifted_anchor_group.grid[r][c] = fr_idx
+        fragment_idx_to_group_idx[fr_idx] = fragment_idx_to_group_idx[shifted_anchor_group.used_fragments[0]]
+
+    for fr_idx in shifted_anchor_group.used_fragments:
+        row, col = shifted_anchor_group.fragment_positions[fr_idx]
+        shifted_anchor_group.update_neighbours_grid_after_new_merge(row, col)
+    return shifted_anchor_group
+
+def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group, max_cols=8):
     images = []
     group_indices = []
 
     for gr in groups:
-        if len(gr.used_fragments) > 1:
+        if dont_show_1_fr_group == 0 or len(gr.used_fragments) > 1:
             image = gr.show_group(fragments)
             images.append(image)
             gr_idx = fr_idx_to_group_idx[gr.used_fragments[0]]
@@ -408,16 +440,20 @@ def find_best_candidate_for_empty_spot(row, groups):
                 if comp: score += comp.score; comps.append(comp); valid = True
             
 
+
             if valid:
                 comp = comps[0]
-                score = calculate_all_group_matchings_scores(comp, groups[anchor_group_idx], groups[pasted_group_idx])
-                if check_groups_shapes_for_merging(comp, groups[anchor_group_idx], groups[pasted_group_idx]) and \
-                   does_merge_fit_within_bounds(comp, groups[anchor_group_idx], groups[pasted_group_idx]):
-                    if score < best_score:
-                        best_score = score
-                        best_comp = comp
-                        best_fragment_idx = fr_idx
-                        best_pasted_group_idx = pasted_group_idx
+                shifted_anchor_group, shifted_pasted_group = simulate_merge_positions(comp, groups[anchor_group_idx], groups[pasted_group_idx])
+
+                if does_merge_fit_within_bounds(shifted_anchor_group):
+                        if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
+                            score = calculate_all_group_matchings_scores(shifted_anchor_group, shifted_pasted_group)
+                            if score:
+                                if score < best_score:
+                                    best_score = score
+                                    best_comp = comp
+                                    best_fragment_idx = fr_idx
+                                    best_pasted_group_idx = pasted_group_idx
 
     if best_comp:
         return {
@@ -456,20 +492,22 @@ def solve_groups(groups, fragments, fragment_idx_to_group_idx):
             break
 
         merge_candidates.sort(key=lambda c: c['score'])
-
+        
+        print([round(c['score'], 6) for c in merge_candidates])
         while merge_candidates:
             best = merge_candidates.pop(0)
             comp = best['comp']
-            anchor_idx = best['anchor_group_idx']
-            pasted_idx = best['pasted_group_idx']
+            anchor_group_idx = best['anchor_group_idx']
+            pasted_group_idx = best['pasted_group_idx']
 
-            if check_groups_shapes_for_merging(comp, groups[anchor_idx], groups[pasted_idx]) and \
-               does_merge_fit_within_bounds(comp, groups[anchor_idx], groups[pasted_idx]):
+            shifted_anchor_group, shifted_pasted_group = simulate_merge_positions(comp, groups[anchor_group_idx], groups[pasted_group_idx])
 
-                merge_groups(comp, fragments, fragment_idx_to_group_idx, groups[anchor_idx], groups[pasted_idx])
-                update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_idx)
-                print(f"Merged group {anchor_idx} and {pasted_idx} using: {comp}")
-                break
+            if does_merge_fit_within_bounds(shifted_anchor_group):
+                if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
+                    groups[anchor_group_idx] = merge_groups(shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
+                    update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
+                    print(f"Merged group {anchor_group_idx} and {pasted_group_idx} using: {comp}")
+                    break
         else:
             print("No suitable merge candidate found after filtering.")
             break
