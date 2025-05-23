@@ -6,6 +6,7 @@ from typing import List
 np.set_printoptions(threshold=np.inf)  
 from utils import *
 
+ROTATING_PIECES = True
 
 COL_NR = 32
 ROW_NR = 32
