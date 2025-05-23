@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from typing import List
 from sides_comparison import SidesComparison
+from rotation import *
 import pandas as pd
 import cv2 as cv
 import copy
@@ -44,7 +45,7 @@ class Group:
 
     def update_neighbours_grid_after_new_merge(self, i, j):
         if i == 0 or j == 0 or i == self.row_nr-1 or j == self.col_nr -1:
-            print("no empty edge in merging")
+            # print("no empty edge in merging")
             return
         self.neighbours_grid[i][j] = 0
         if self.grid[i-1][j] == None:
@@ -76,9 +77,11 @@ class Group:
                     else:
                         img_resized = img
 
+                    img_rotated = rotate_image(img_resized, fragment.rotation)                 
                     top = i * global_values.TILE_H
                     left = j * global_values.TILE_W
-                    canvas_img[top:top+global_values.TILE_H, left:left+global_values.TILE_W] = img_resized
+                    canvas_img[top:top+global_values.TILE_H, left:left+global_values.TILE_W] = img_rotated
+
 
         fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
         ax.imshow(canvas_img)
@@ -103,67 +106,8 @@ class Group:
 
 
 
-def rotate_fragment(fragment, rotation):
-    
-    image = fragment.value
-    plt.imshow(image)
-    plt.show()
-    if rotation == 1:
-        image = cv.rotate(image, cv.ROTATE_90_CLOCKWISE)
-    elif rotation == 2:
-        image = cv.rotate(image, cv.ROTATE_180)
-    elif rotation == 3:
-        image = cv.rotate(image, cv.ROTATE_90_COUNTERCLOCKWISE)
-    plt.imshow(image)
-    plt.show()
 
-def find_pasted_group_moving_distance_and_rotation(anchor_side, pasted_side):  
-    anchor_side_orientation = (anchor_side.side_idx + anchor_side.rotation) % 4
-    pasted_side_orientation = (pasted_side.side_idx + pasted_side.rotation) % 4
-
-    row_dist = 0
-    col_dist = 0
-    pasted_side_new_rotation = 0
-
-    if anchor_side_orientation == 0:
-        row_col -= 1
-        pasted_side_new_rotation = (4 + 2 - pasted_side_new_rotation) % 4
-
-    elif anchor_side_orientation == 1:
-        col_dist += 1
-        pasted_side_new_rotation = (4 + 3 - pasted_side_orientation) % 4
-
-    elif anchor_side_orientation == 2:
-        row_col += 1
-        pasted_side_new_rotation = (4 - pasted_side_orientation) % 4
-
-    else:
-        col_dist -= 1
-        pasted_side_new_rotation = (4 + 1 - pasted_side_orientation) % 4
-    
-    return row_dist, col_dist, pasted_side_new_rotation
-
-
-def find_pasted_group_moving_distance(anchor_side, pasted_side):  
-
-    row_dist = 0
-    col_dist = 0
-    if anchor_side.side_idx == 1 and pasted_side.side_idx == 3:
-        col_dist = 1
-    elif anchor_side.side_idx == 3 and pasted_side.side_idx == 1:
-        col_dist = -1
-    elif anchor_side.side_idx == 2 and pasted_side.side_idx == 0:
-        row_dist = 1
-    elif anchor_side.side_idx == 0 and pasted_side.side_idx == 2:
-        row_dist = -1
-    else:
-        print("de implementat rotiri")
-        return None
-    return row_dist, col_dist
-
-
-
-def simulate_merge_positions(comp: SidesComparison, anchor_group: Group, pasted_group: Group):
+def simulate_merge_positions(fragments, comp: SidesComparison, anchor_group: Group, pasted_group: Group):
     anchor_copy = copy.deepcopy(anchor_group)
     pasted_copy = copy.deepcopy(pasted_group)
 
@@ -171,14 +115,17 @@ def simulate_merge_positions(comp: SidesComparison, anchor_group: Group, pasted_
     pasted_side = comp.side2
 
     #### moved pasted group in .fragment_positions to line up with 
-    offset_row, offset_col = find_pasted_group_moving_distance(anchor_side, pasted_side)
+    # offset_row, offset_col, pasted_group_additional_rotation = find_pasted_group_moving_distance_and_rotation(anchor_side, pasted_side)
+
+    offset_row, offset_col, pasted_group_additional_rotation = find_pasted_group_moving_distance_and_rotation(fragments, comp)
+
+    pasted_copy = rotate_fragments_positions(pasted_copy, pasted_group_additional_rotation)
 
     anchor_row, anchor_col = anchor_copy.fragment_positions[anchor_side.fragment_idx]
     pasted_row, pasted_col = pasted_copy.fragment_positions[pasted_side.fragment_idx]
     row_offset = anchor_row + offset_row - pasted_row
     col_offset = anchor_col + offset_col - pasted_col
 
-    pasted_copy.grid = [[None for _ in range(pasted_copy.col_nr)] for _ in range(pasted_copy.row_nr)]
     for fr_idx in pasted_copy.used_fragments:
         row, col = pasted_copy.fragment_positions[fr_idx]
         pasted_copy.fragment_positions[fr_idx] = [row + row_offset, col + col_offset]
@@ -211,18 +158,15 @@ def simulate_merge_positions(comp: SidesComparison, anchor_group: Group, pasted_
     all_cols = [col for row, col in anchor_copy.fragment_positions.values()] + \
                [col for row, col in pasted_copy.fragment_positions.values()]
 
-    min_row = min(all_rows)
-    min_col = min(all_cols)
-    max_row = max(all_rows)
-    max_col = max(all_cols)
+    new_row_nr = max(all_rows) + 2
+    new_col_nr = max(all_cols) + 2
 
-    anchor_copy.row_nr = max_row - min_row + 3 
-    anchor_copy.col_nr = max_col - min_col + 3
-    pasted_copy.row_nr = max_row - min_row + 3 
-    pasted_copy.col_nr = max_col - min_col + 3
+    anchor_copy.row_nr = new_row_nr
+    anchor_copy.col_nr = new_col_nr
+    pasted_copy.row_nr = new_row_nr
+    pasted_copy.col_nr = new_col_nr
 
-    
-    ## polulatinf grids correctl
+    ## polulating grids correctly
     anchor_copy.grid = [[None for _ in range(anchor_copy.col_nr)] for _ in range(anchor_copy.row_nr)]
     anchor_copy.neighbours_grid = [[0 for _ in range(anchor_copy.col_nr)] for _ in range(anchor_copy.row_nr)]
 
@@ -237,7 +181,10 @@ def simulate_merge_positions(comp: SidesComparison, anchor_group: Group, pasted_
         row, col = pasted_copy.fragment_positions[fr_idx]
         pasted_copy.grid[row][col] = fr_idx
 
-    return anchor_copy, pasted_copy
+
+    return anchor_copy, pasted_copy, pasted_group_additional_rotation
+
+
 
 def check_groups_shapes_for_merging(shifted_anchor_group: Group, shifted_pasted_group: Group):
 
@@ -261,33 +208,47 @@ def does_merge_fit_within_bounds(shifted_anchor_group: Group):
         return False
     return True
 
+def find_side_idx_of_orientation(current_rotation, orientation):
+    return (4 + orientation - current_rotation) % 4
 
-def check_all_group_matchings_scores(shifted_anchor_group: Group, shifted_pasted_group: Group):
+
+def check_all_group_matchings_scores(fragments, pasted_group_additional_rotation, shifted_anchor_group: Group, shifted_pasted_group: Group):
     total_score = 0.0
     total_matchings = 0
+
     directions = [(-1, 0, 0, 2), (1, 0, 2, 0), (0, -1, 3, 1), (0, 1, 1, 3)]
 
     for pasted_fr_idx in shifted_pasted_group.used_fragments:
         row, col = shifted_pasted_group.fragment_positions[pasted_fr_idx]
 
-        for neighbour_row_offset, neighbour_col_offset, side1, side2 in directions:
+        for neighbour_row_offset, neighbour_col_offset, s1, s2 in directions:
             neighbor_row = row + neighbour_row_offset
             neighbor_col = col + neighbour_col_offset
-            if neighbor_row >= 0 and  neighbor_row <= shifted_anchor_group.row_nr and neighbor_col >= 0 and  neighbor_col <= shifted_anchor_group.col_nr:
-                anchor_fr_idx = shifted_anchor_group.grid[neighbor_row][neighbor_col]
-                if anchor_fr_idx is not None:
-                    neighbor_comp = get_comparison(pasted_fr_idx, anchor_fr_idx, side1, side2)
-                    if neighbor_comp:
-                        if neighbor_comp.score > global_values.IMAGE_TH:
-                            return False
-                        total_score += neighbor_comp.score
-                        total_matchings += 1
+            anchor_fr_idx = shifted_anchor_group.grid[neighbor_row][neighbor_col]
+            if anchor_fr_idx is not None:
+                pasted_fragment_rotation = (pasted_group_additional_rotation + fragments[pasted_fr_idx].rotation) % 4
+                side1 = find_side_idx_of_orientation(pasted_fragment_rotation, s1)
+                side2 = find_side_idx_of_orientation(fragments[anchor_fr_idx].rotation, s2)
+                print(f"anchor side of orientation {s2} with fragment rotated  {fragments[anchor_fr_idx].rotation} times  has index {side2}")
+                print(f"pasted side or orientation {s1} with fragment rotated {pasted_fragment_rotation} has index {side1}")
+                neighbor_comp = get_comparison(pasted_fr_idx, anchor_fr_idx, side1, side2)
+                if neighbor_comp:
+                    # print(neighbor_comp)
+
+                    if neighbor_comp.score > global_values.IMAGE_TH:
+                        # print("a score too bad")
+                        return False
+                    total_score += neighbor_comp.score
+                    total_matchings += 1
 
     if total_matchings == 0:
+        # print("no matchings")
+
         return False
 
     average_score = total_score / total_matchings
     if average_score > global_values.GROUP_TH:
+        # print("total score bad")
         return False
     
     return True
@@ -326,11 +287,11 @@ def update_after_merge(groups: List[Group],fragments, fragment_idx_to_group_idx,
 
     
 
-def merge_groups(shifted_anchor_group: Group, shifted_pasted_group: Group, fragment_idx_to_group_idx):
+def merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group: Group, shifted_pasted_group: Group, fragment_idx_to_group_idx):
 
     for fr_idx, pos in shifted_pasted_group.fragment_positions.items():
         shifted_anchor_group.fragment_positions[fr_idx] = pos
-
+        fragments[fr_idx].rotation = (fragments[fr_idx].rotation + pasted_group_additional_rotation) % 4
 
     shifted_anchor_group.used_fragments.extend(shifted_pasted_group.used_fragments)
 
@@ -358,6 +319,8 @@ def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group
             group_indices.append(gr_idx)
 
     n = len(images)
+    if n == 0:
+        return
     n_cols = min(n, max_cols)
     n_rows = (n + max_cols - 1) // max_cols
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 3, n_rows * 3))
@@ -430,6 +393,7 @@ def find_best_candidate_for_empty_spot(row, groups):
             valid = False
             comps = []
 
+            ### need to find normalized values of sides
             if neighbours[0] is not None:
                 comp = get_comparison(neighbours[0], fr_idx, 2, 0)
                 if comp: score += comp.score; comps.append(comp); valid = True
