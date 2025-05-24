@@ -2,6 +2,20 @@ import cv2 as cv
 import numpy as np 
 from side import *
 from global_values import *
+import random
+
+
+def rotate_image(image, rotation):
+    
+    if rotation == 1:
+        image = cv.rotate(image, cv.ROTATE_90_CLOCKWISE)
+    elif rotation == 2:
+        image = cv.rotate(image, cv.ROTATE_180)
+    elif rotation == 3:
+        image = cv.rotate(image, cv.ROTATE_90_COUNTERCLOCKWISE)
+
+    return image
+
 
 class Fragment:
     def __init__(self,value, fragment_idx):
@@ -68,22 +82,26 @@ def divide_image(image_path, output_folder, n, m):
     h, w = rgba_image.shape[:2] 
 
     tile_h, tile_w = h // n, w // m  
-    TILE_H = tile_h
-    TILE_W = tile_w
 
     fragments = []
-
+    rotations = []
     for i in range(n):
         for j in range(m):
             x, y = j * tile_w, i * tile_h  
             cropped_fragment = rgba_image[y:y + tile_h, x:x + tile_w]  
-            
+            if ROTATING_PIECES:
+                rotation = random.randint(0, 3) 
+                rotations.append(rotation)
+            else:
+                rotation = 0
+            rotated_fragment = rotate_image(cropped_fragment, rotation)
             fragment_path = os.path.join(output_folder, f"fragment_{i*m + j}.jpg")
-            cv.imwrite(fragment_path, cropped_fragment[..., [2, 1, 0, 3]])
-            fr = Fragment(cropped_fragment, i*m + j)
+            cv.imwrite(fragment_path, rotated_fragment[..., [2, 1, 0, 3]])
+            fr = Fragment(rotated_fragment, i*m + j)
             # print(fragment.contour)
             # print("-------------------------------------------")
             fragments.append(fr)
-
+    
+    print("Rotations by fragment:", ', '.join([f"{idx}:{rotation}" for idx, rotation in enumerate(rotations)]))
     return fragments, tile_h, tile_w
 
