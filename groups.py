@@ -58,7 +58,7 @@ class Group:
             self.neighbours_grid[i][j+1] += 1
             
 
-    def show_group(self, fragments):
+    def show_group(self, fragments, extra_rotation):
 
         height = self.row_nr * global_values.TILE_H
         width = self.col_nr * global_values.TILE_W
@@ -77,7 +77,7 @@ class Group:
                     else:
                         img_resized = img
 
-                    img_rotated = rotate_image(img_resized, fragment.rotation)                 
+                    img_rotated = rotate_image(img_resized, (fragment.rotation+extra_rotation)%4)                 
                     top = i * global_values.TILE_H
                     left = j * global_values.TILE_W
                     canvas_img[top:top+global_values.TILE_H, left:left+global_values.TILE_W] = img_rotated
@@ -181,8 +181,8 @@ def simulate_merge_positions(fragments, comp: SidesComparison, anchor_group: Gro
         pasted_copy.grid[row][col] = fr_idx
 
 
-    # anchor_img = anchor_copy.show_group(fragments)
-    # pasted_img = pasted_copy.show_group(fragments)
+    # anchor_img = anchor_copy.show_group(fragments,0)
+    # pasted_img = pasted_copy.show_group(fragments, pasted_group_additional_rotation)
     # plt.imshow(anchor_img)
     # plt.show()
     # plt.imshow(pasted_img)
@@ -258,33 +258,6 @@ def check_all_group_matchings_scores(fragments, pasted_group_additional_rotation
     
     return True
 
-def calculate_all_group_matchings_scores(fragments, pasted_group_additional_rotation, shifted_anchor_group: Group, shifted_pasted_group: Group):
-    total_score = 0.0
-    total_matchings = 0
-
-    directions = [(-1, 0, 0, 2), (1, 0, 2, 0), (0, -1, 3, 1), (0, 1, 1, 3)]
-
-    for pasted_fr_idx in shifted_pasted_group.used_fragments:
-        row, col = shifted_pasted_group.fragment_positions[pasted_fr_idx]
-
-        for neighbour_row_offset, neighbour_col_offset, s1, s2 in directions:
-            neighbor_row = row + neighbour_row_offset
-            neighbor_col = col + neighbour_col_offset
-            anchor_fr_idx = shifted_anchor_group.grid[neighbor_row][neighbor_col]
-            if anchor_fr_idx is not None:
-                pasted_fragment_rotation = (pasted_group_additional_rotation + fragments[pasted_fr_idx].rotation) % 4
-                side1 = find_side_idx_of_orientation(pasted_fragment_rotation, s1)
-                side2 = find_side_idx_of_orientation(fragments[anchor_fr_idx].rotation, s2)
-                neighbor_comp = get_comparison(pasted_fr_idx, anchor_fr_idx, side1, side2)
-                if neighbor_comp:
-                    # print(neighbor_comp)
-                    total_score += neighbor_comp.score
-                    total_matchings += 1
-
-    if total_matchings == 0:
-        return False
-    average_score = total_score / total_matchings
-    return average_score
 
 def update_after_merge(groups: List[Group],fragments, fragment_idx_to_group_idx, pasted_group_idx):
     for fr_idx in range(len(fragments)):
@@ -326,7 +299,7 @@ def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group
 
     for gr in groups:
         if dont_show_1_fr_group == 0 or len(gr.used_fragments) > 1:
-            image = gr.show_group(fragments)
+            image = gr.show_group(fragments,0)
             images.append(image)
             gr_idx = fr_idx_to_group_idx[gr.used_fragments[0]]
             group_indices.append(gr_idx)
@@ -353,227 +326,4 @@ def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group
     plt.show()
 
 
-def find_side_idx_of_orientation(current_rotation, orientation):
-    return (4 + orientation - current_rotation) % 4
 
-def edges_of_groups(groups):
-    data = []
-
-    for group_idx, group in enumerate(groups):
-
-        rows, cols = len(group.grid), len(group.grid[0])
-
-        for i in range(rows):
-            for j in range(cols):
-                if group.grid[i][j] is None:
-                    neighbour_count = group.neighbours_grid[i][j]
-                    if neighbour_count > 0: 
-                        data.append({
-                            'group_idx': group_idx,
-                            'nr_of_neighbours': neighbour_count,
-                            'row': i,
-                            'col': j
-                        })
-
-    df = pd.DataFrame(data)
-
-    if not df.empty:
-        df = df.sort_values(by='nr_of_neighbours', ascending=False).reset_index(drop=True)
-
-    return df
-
-
-
-def find_best_candidate_for_empty_spot(fragments, row, groups):
-    anchor_group_idx = row['group_idx']
-    empty_row, empty_col = row['row'], row['col']
-    anchor_group = groups[anchor_group_idx]
-
-    neighbours = [
-        anchor_group.grid[empty_row - 1][empty_col] if empty_row > 0 else None,
-        anchor_group.grid[empty_row][empty_col + 1] if empty_col + 1 < anchor_group.col_nr else None,
-        anchor_group.grid[empty_row + 1][empty_col] if empty_row + 1 < anchor_group.row_nr else None,
-        anchor_group.grid[empty_row][empty_col - 1] if empty_col > 0 else None
-    ]
-
-    best_score = float('inf')
-    best_comp = None
-    best_fragment_idx = None
-    best_pasted_group_idx = None
-
-    for pasted_group_idx, pasted_group in enumerate(groups):
-        if pasted_group_idx == anchor_group_idx:
-            continue
-
-        for pasted_fr_idx in pasted_group.used_fragments:
-            for pasted_additional_rotation in range(0,4):
-                if neighbours[0] is not None:
-                    neighbours_side_idx = find_side_idx_of_orientation(fragments[neighbours[0]].rotation,2)
-                    comp = get_comparison(neighbours[0], pasted_fr_idx, neighbours_side_idx, pasted_additional_rotation)
-                elif neighbours[1] is not None:
-                    neighbours_side_idx = find_side_idx_of_orientation(fragments[neighbours[1]].rotation,3)
-                    comp = get_comparison(neighbours[1], pasted_fr_idx, neighbours_side_idx, pasted_additional_rotation)
-                elif neighbours[2] is not None:
-                    neighbours_side_idx = find_side_idx_of_orientation(fragments[neighbours[2]].rotation,0)
-                    comp = get_comparison(neighbours[2], pasted_fr_idx, neighbours_side_idx, pasted_additional_rotation)
-                elif neighbours[3] is not None:
-                    neighbours_side_idx = find_side_idx_of_orientation(fragments[neighbours[3]].rotation,1)
-                    comp = get_comparison(neighbours[3], pasted_fr_idx, neighbours_side_idx, pasted_additional_rotation)
-                else:
-                    continue
-                ### needs fixing. why is comp none?
-                if comp:
-                    shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(fragments, comp, groups[anchor_group_idx], groups[pasted_group_idx])
-                    if does_merge_fit_within_bounds(shifted_anchor_group):
-                        if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
-                            # print(f"{comp}")
-
-                            score = calculate_all_group_matchings_scores(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group)
-                            if score:
-                                if score < best_score:
-                                    best_score = score
-                                    best_comp = comp
-                                    best_fragment_idx = pasted_fr_idx
-                                    best_pasted_group_idx = pasted_group_idx
-                                    pasted_group_additional_rotation = pasted_group_additional_rotation
-    if best_comp:
-        return {
-            'anchor_group_idx': anchor_group_idx,
-            'empty_spot_neighbours': neighbours,
-            'pasted_group_idx': best_pasted_group_idx,
-            'fragment_idx': best_fragment_idx,
-            'score': best_score,
-            'comp': best_comp,
-            'shifted_anchor_group':shifted_anchor_group,
-            'shifted_pasted_group':shifted_pasted_group,
-            'pasted_group_additional_rotation':pasted_group_additional_rotation,
-
-        }
-    return None
-
-
-import pandas as pd
-
-def update_merge_candidates(max_neighbours, groups, edges_of_groups_df, merge_candidates, pasted_group_idx, anchor_group_idx):
-    # Filter out merge candidates that involve either of the merged groups
-    new_merge_candidates = []
-    for c in merge_candidates:
-        if c['anchor_group_idx'] != pasted_group_idx and c['pasted_group_idx'] != pasted_group_idx:
-            if c['anchor_group_idx'] != anchor_group_idx and c['pasted_group_idx'] != anchor_group_idx:
-                # Update indices if needed
-                if c['anchor_group_idx'] > pasted_group_idx:
-                    c['anchor_group_idx'] -= 1
-                if c['pasted_group_idx'] > pasted_group_idx:
-                    c['pasted_group_idx'] -= 1
-                new_merge_candidates.append(c)
-
-    # Start collecting new edges (as dicts)
-    new_edges_of_groups = []
-
-    # Preserve edges from other unaffected groups
-    for _, e in edges_of_groups_df.iterrows():
-        if e['group_idx'] != pasted_group_idx and e['group_idx'] != anchor_group_idx:
-            updated_idx = e['group_idx'] - 1 if e['group_idx'] > pasted_group_idx else e['group_idx']
-            new_edges_of_groups.append({
-                'group_idx': updated_idx,
-                'nr_of_neighbours': e['nr_of_neighbours'],
-                'row': e['row'],
-                'col': e['col']
-            })
-
-    # Add new edge entries from the newly merged group
-    group = groups[anchor_group_idx]
-    rows, cols = len(group.grid), len(group.grid[0])
-    for i in range(rows):
-        for j in range(cols):
-            if group.grid[i][j] is None:
-                neighbour_count = group.neighbours_grid[i][j]
-                if neighbour_count == max_neighbours:
-                    new_edges_of_groups.append({
-                        'group_idx': anchor_group_idx,
-                        'nr_of_neighbours': neighbour_count,
-                        'row': i,
-                        'col': j
-                    })
-
-    # Convert to sorted DataFrame if there are any edges
-    if new_edges_of_groups:
-        new_edges_of_groups = pd.DataFrame(new_edges_of_groups)
-        new_edges_of_groups = new_edges_of_groups.sort_values(by='nr_of_neighbours', ascending=False).reset_index(drop=True)
-    else:
-        new_edges_of_groups = pd.DataFrame(columns=['group_idx', 'nr_of_neighbours', 'row', 'col'])
-
-    return new_merge_candidates, new_edges_of_groups
-
-
-def solve_groups(groups, fragments, fragment_idx_to_group_idx):
-    while len(groups) > 1:
-        edges_of_groups_df = edges_of_groups(groups)
-        
-
-        if edges_of_groups_df.empty:
-            print("No empty spots with neighbours left.")
-            break
-
-        max_neighbours = edges_of_groups_df['nr_of_neighbours'][0] + 1
-        ### best score first
-        # merge_candidates = []
-        # for _, row in edges_of_groups_df.iterrows():
-        #     candidate = find_best_candidate_for_empty_spot(row, groups)
-        #     if candidate:
-        #         merge_candidates.append(candidate)
-
-        #### more neighbours first, then score
-        merge_candidates = []
-        while not merge_candidates and max_neighbours > 2:
-            max_neighbours -= 1
-            for _, row in edges_of_groups_df.iterrows():
-                if row['nr_of_neighbours'] == max_neighbours:
-                    candidate = find_best_candidate_for_empty_spot(fragments, row, groups)
-                    if candidate:
-                        merge_candidates.append(candidate)
-
-
-
-        if not merge_candidates:
-            print("No valid merge candidates found.")
-            break
-
-        merge_candidates.sort(key=lambda c: c['score'])
-        # print([round(c['score'], 6) for c in merge_candidates])
-        while merge_candidates:
-            best = merge_candidates.pop(0)
-            comp = best['comp']
-            anchor_group_idx = best['anchor_group_idx']
-            pasted_group_idx = best['pasted_group_idx']
-            shifted_anchor_group = best['shifted_anchor_group']
-            shifted_pasted_group = best['shifted_pasted_group']
-            print(f"Merged group {anchor_group_idx} and {pasted_group_idx} with total score: {best['score']} using: {comp}")
-
-            print("before merge")
-            print(f"used fragments anchor: {shifted_anchor_group}")
-            print(f"used fragments pasted: {shifted_pasted_group}")
-
-            groups[anchor_group_idx] = merge_groups(fragments, best['pasted_group_additional_rotation'], shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
-            print(f"simulating merge:")
-
-            # anchor_img = shifted_anchor_group.show_group(fragments)
-            # pasted_img = shifted_pasted_group.show_group(fragments)
-            # plt.imshow(anchor_img)
-            # plt.show()
-            # plt.imshow(pasted_img)
-            # plt.show()
-            update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
-            merge_candidates,edges_of_groups_df = update_merge_candidates(max_neighbours, groups, edges_of_groups_df, merge_candidates, pasted_group_idx, anchor_group_idx)
-
-            show_all_groups(groups,fragments,fragment_idx_to_group_idx, 1)
-            print("after merge")
-            print(f"used fragments anchor: {shifted_anchor_group}")
-            print(f"used fragments pasted: {shifted_pasted_group}")
-            print("--------------------------------------------------------------------------------------------------------------")
-            break
-        else:
-            print("No suitable merge candidate found after filtering.")
-            break
-
-    return groups, fragments, fragment_idx_to_group_idx

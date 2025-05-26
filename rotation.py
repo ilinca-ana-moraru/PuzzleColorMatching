@@ -1,5 +1,10 @@
 import cv2 as cv
 
+
+def find_side_idx_of_orientation(current_rotation, orientation):
+    return (4 + orientation - current_rotation) % 4
+
+
 def rotate_image(image, rotation):
     
     if rotation == 1:
@@ -47,7 +52,7 @@ def find_pasted_group_moving_distance_and_rotation(fragments, comp):
         col_dist -= 1
         pasted_group_additional_rotation = (4 + 1 - pasted_side_orientation) % 4
     
-    return row_dist, col_dist, pasted_group_additional_rotation
+    return row_dist, col_dist, pasted_group_additional_rotation 
 
 
 def rotate_fragments_positions(group_to_rotate, rotation):
