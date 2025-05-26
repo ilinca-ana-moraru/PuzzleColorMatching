@@ -97,9 +97,6 @@ def find_best_candidate_for_empty_spot(fragments, row, groups):
                     continue
                 ### needs fixing. why is comp none?
                 if comp:
-                    # if anchor_group_idx > pasted_group_idx:
-                    #     anchor_group_idx, pasted_group_idx = pasted_group_idx, anchor_group_idx
-                    # comp = get_comparison(comp.side2.fragment_idx, comp.side1.fragment_idx, comp.side2.side_idx, comp.side1.side_idx)
                     shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(fragments, comp, groups[anchor_group_idx], groups[pasted_group_idx])
                     if does_merge_fit_within_bounds(shifted_anchor_group):
                         if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
@@ -131,35 +128,27 @@ def find_best_candidate_for_empty_spot(fragments, row, groups):
 
 
 
-def update_merge_candidates(max_neighbours, groups, edges_of_groups_df, merge_candidates, pasted_group_idx, anchor_group_idx):
+def update_merge_candidates(fragments, groups, edges_of_groups_df, merge_candidates, pasted_group_idx, anchor_group_idx):
 
-    # Filter out merge candidates that involve either of the merged groups
-    new_merge_candidates = []
-    for c in merge_candidates:
-        if c['anchor_group_idx'] != pasted_group_idx and c['pasted_group_idx'] != pasted_group_idx:
-            if c['anchor_group_idx'] != anchor_group_idx and c['pasted_group_idx'] != anchor_group_idx:
-                # Update indices if needed
-                if c['anchor_group_idx'] > pasted_group_idx:
-                    c['anchor_group_idx'] -= 1
-                if c['pasted_group_idx'] > pasted_group_idx:
-                    c['pasted_group_idx'] -= 1
-                new_merge_candidates.append(c)
 
-    # Start collecting new edges (as dicts)
+
+
+    ## save empty_spots of unmerging groups
     new_edges_of_groups = []
 
-    # Preserve edges from other unaffected groups
     for _, e in edges_of_groups_df.iterrows():
         if e['group_idx'] != pasted_group_idx and e['group_idx'] != anchor_group_idx:
-            updated_idx = e['group_idx'] - 1 if e['group_idx'] > pasted_group_idx else e['group_idx']
+            if e['group_idx'] > pasted_group_idx:
+                e['group_idx'] -= 1
+
             new_edges_of_groups.append({
-                'group_idx': updated_idx,
+                'group_idx': e['group_idx'],
                 'nr_of_neighbours': e['nr_of_neighbours'],
                 'row': e['row'],
                 'col': e['col']
             })
 
-    # Add new edge entries from the newly merged group
+    
     if len(groups) > anchor_group_idx:
         group = groups[anchor_group_idx]
         rows, cols = len(group.grid), len(group.grid[0])
@@ -167,110 +156,75 @@ def update_merge_candidates(max_neighbours, groups, edges_of_groups_df, merge_ca
             for j in range(cols):
                 if group.grid[i][j] is None:
                     neighbour_count = group.neighbours_grid[i][j]
-                    if neighbour_count == max_neighbours:
-                        new_edges_of_groups.append({
-                            'group_idx': anchor_group_idx,
-                            'nr_of_neighbours': neighbour_count,
-                            'row': i,
-                            'col': j
-                        })
+                    new_edges_of_groups.append({
+                        'group_idx': anchor_group_idx,
+                        'nr_of_neighbours': neighbour_count,
+                        'row': i,
+                        'col': j
+                    })
 
-    # Convert to sorted DataFrame if there are any edges
+    
     if new_edges_of_groups:
         new_edges_of_groups = pd.DataFrame(new_edges_of_groups)
         new_edges_of_groups = new_edges_of_groups.sort_values(by='nr_of_neighbours', ascending=False)
     else:
         new_edges_of_groups = pd.DataFrame(columns=['group_idx', 'nr_of_neighbours', 'row', 'col'])
 
+    # filter out merge candidates that involve either of the merged groups, and update to correct idx
+    new_merge_candidates = []
+    for c in merge_candidates:
+        if c['anchor_group_idx'] != pasted_group_idx and c['pasted_group_idx'] != pasted_group_idx:
+            if c['anchor_group_idx'] != anchor_group_idx and c['pasted_group_idx'] != anchor_group_idx:
+                if c['anchor_group_idx'] > pasted_group_idx:
+                    c['anchor_group_idx'] -= 1
+                if c['pasted_group_idx'] > pasted_group_idx:
+                    c['pasted_group_idx'] -= 1
+                new_merge_candidates.append(c)
+
+
+    for _, row in new_edges_of_groups.iterrows():
+        best_candidate = find_best_candidate_for_empty_spot(fragments, row, groups)
+        if best_candidate is not None:
+            new_merge_candidates.append(best_candidate)
+
     return new_merge_candidates, new_edges_of_groups
 
 
 def solve_groups(groups, fragments, fragment_idx_to_group_idx):
     edges_of_groups_df = edges_of_groups(groups)
+    if edges_of_groups_df.empty:
+        print("No empty spots with neighbours left.")
+        return
+
+    merge_candidates = []
+    for _, row in edges_of_groups_df.iterrows():
+        candidate = find_best_candidate_for_empty_spot(fragments, row, groups)
+        if candidate is not None:
+            merge_candidates.append(candidate)
 
     while len(groups) > 1:
         
-
-        if edges_of_groups_df.empty:
-            print("No empty spots with neighbours left.")
-            break
-
-        #### more neighbours first, then score
-        merge_candidates = []
-        max_neighbours = edges_of_groups_df['nr_of_neighbours'][0] + 1
-        while not merge_candidates and max_neighbours >= 2:
-            # print(f"\n looking at merging with {max_neighbours} neighbours")
-            max_neighbours -= 1
-            for _, row in edges_of_groups_df.iterrows():
-                if row['nr_of_neighbours'] == max_neighbours:
-                    candidate = find_best_candidate_for_empty_spot(fragments, row, groups)
-                    if candidate is not None:
-                        merge_candidates.append(candidate)
-
-
-
         if not merge_candidates:
             print("No valid merge candidates found.")
             break
 
-        merge_candidates.sort(key=lambda c: c['score'])
-        # print([round(c['score'], 6) for c in merge_candidates])
-        best = merge_candidates.pop(0)
-        comp = best['comp']
-        anchor_group_idx = best['anchor_group_idx']
-        pasted_group_idx = best['pasted_group_idx']
+        while merge_candidates:
+            max_neigh = max(c['total_matchings'] for c in merge_candidates)
+            best_candidates = [c for c in merge_candidates if c['total_matchings'] == max_neigh]
+            best = min(best_candidates, key=lambda c: c['score'])
+            merge_candidates.remove(best)
+            comp = best['comp']
+            anchor_group_idx = best['anchor_group_idx']
+            pasted_group_idx = best['pasted_group_idx']
 
-        print(f"Merged group {anchor_group_idx} and {pasted_group_idx} with total score: {best['score']} using: {comp}")
+            print(f"Merged group {anchor_group_idx} and {pasted_group_idx} with total score: {best['score']} using: {comp}")
 
-        shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(fragments, comp, groups[anchor_group_idx], groups[pasted_group_idx])
-        groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
+            shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(fragments, comp, groups[anchor_group_idx], groups[pasted_group_idx])
+            groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
 
-        update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
-        # _, edges_of_groups_df = update_merge_candidates(max_neighbours, groups, edges_of_groups_df, merge_candidates, pasted_group_idx, anchor_group_idx)
-        edges_of_groups_df = edges_of_groups(groups)
+            update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
+            merge_candidates, edges_of_groups_df = update_merge_candidates(fragments, groups, edges_of_groups_df, merge_candidates, pasted_group_idx, anchor_group_idx)
 
+ 
     return groups, fragments, fragment_idx_to_group_idx
 
-
-def solve_groups_safe(groups, fragments, fragment_idx_to_group_idx):
-    while len(groups) > 1:
-        edges_of_groups_df = edges_of_groups(groups)
-        
-
-        if edges_of_groups_df.empty:
-            print("No empty spots with neighbours left.")
-            break
-
-        #### more neighbours first, then score
-        merge_candidates = []
-        max_neighbours = edges_of_groups_df['nr_of_neighbours'][0] + 1
-        while not merge_candidates and max_neighbours >= 2:
-            # print(f"\n looking at merging with {max_neighbours} neighbours")
-            max_neighbours -= 1
-            for _, row in edges_of_groups_df.iterrows():
-                if row['nr_of_neighbours'] == max_neighbours:
-                    candidate = find_best_candidate_for_empty_spot(fragments, row, groups)
-                    if candidate is not None:
-                        merge_candidates.append(candidate)
-
-
-
-        if not merge_candidates:
-            print("No valid merge candidates found.")
-            break
-
-        merge_candidates.sort(key=lambda c: c['score'])
-        # print([round(c['score'], 6) for c in merge_candidates])
-        best = merge_candidates.pop(0)
-        comp = best['comp']
-        anchor_group_idx = best['anchor_group_idx']
-        pasted_group_idx = best['pasted_group_idx']
-
-        print(f"Merged group {anchor_group_idx} and {pasted_group_idx} with total score: {best['score']} using: {comp}")
-
-        shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(fragments, comp, groups[anchor_group_idx], groups[pasted_group_idx])
-        groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
-
-        update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
-
-    return groups, fragments, fragment_idx_to_group_idx
