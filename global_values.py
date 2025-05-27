@@ -8,6 +8,11 @@ from utils import *
 
 ROTATING_PIECES = True
 
+GRAD_SCORING = False
+NN_SCORING = True
+MODEL = None
+DEVICE = None
+
 COL_NR = 32
 ROW_NR = 32
 

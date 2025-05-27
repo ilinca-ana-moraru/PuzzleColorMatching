@@ -1,10 +1,9 @@
 import cv2 as cv
 import numpy as np 
 from side import *
-from global_values import *
 import random
 from evaluate_sol import *
-
+import global_values
 def rotate_image(image, rotation):
     
     if rotation == 1:
@@ -50,7 +49,7 @@ class Fragment:
             self.cx = 0
             self.cy = 0
         
-        self.grad = grad_func(self.value)
+        self.grad = global_values.grad_func(self.value)
         self.create_sides()
 
     def create_sides(self):
@@ -94,7 +93,7 @@ def divide_image(image_path, output_folder, n, m):
             cropped_fragment = rgba_image[y:y + tile_h, x:x + tile_w]  
             fr_idx = i * m + j
 
-            if ROTATING_PIECES:
+            if global_values.ROTATING_PIECES:
                 rotation = int(random.randint(0, 3)) 
                 rotations[fr_idx] = rotation
             else:

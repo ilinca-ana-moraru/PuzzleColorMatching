@@ -1,25 +1,48 @@
 from side import * 
 import numpy as np
-from global_values import *
+import global_values 
 from scipy.special import erf
+from rotation import *
+import torch
+import torch.nn as nn
+import matplotlib.pyplot as plt
+
+
+
+def preprocess_for_model(img):
+    img = img[:, :, :3] 
+    img = cv.resize(img, (64, 64))
+    img = img.astype(np.float32) / 255.0
+    img = np.transpose(img, (2, 0, 1))
+    return torch.tensor(img).unsqueeze(0)
+
 
 class SidesComparison:
     def __init__(self, fragments, side1 : Side, side2: Side):
         self.side1 = side1
         self.side2 = side2
+        self.model = global_values.MODEL
+        self.device = global_values.DEVICE
 
+        if global_values.GRAD_SCORING == True:
+            self.grad_scoring()
+        else:
+            self.predict_with_nn(fragments)
+
+
+    def grad_scoring(self):
         self.buddy_score = None
 
-        self.reversed_side1_value = side1.value[::-1]
-        self.color_points_distances = abs(self.reversed_side1_value - side2.value)
+        self.reversed_side1_value = self.side1.value[::-1]
+        self.color_points_distances = abs(self.reversed_side1_value - self.side2.value)
         color_score = self.color_points_distances/ 255
 
-        if DIFF_GBR == True:
+        if global_values.DIFF_GBR == True:
             grayscale_weights = 3 * np.array([0.2989, 0.5870, 0.1140])
             color_score *= grayscale_weights
             color_score =np.linalg.norm(color_score, axis = 1)
 
-        if DIFF_GRAY == True:
+        if global_values.DIFF_GRAY == True:
             color_score =np.linalg.norm(color_score, axis = 1)
 
 
@@ -28,7 +51,7 @@ class SidesComparison:
 
 
 
-        self.reversed_side1_grad = side1.grad[::-1]
+        self.reversed_side1_grad = self.side1.grad[::-1]
         grad_match = (self.reversed_side1_grad - self.side2.grad)
         grad_match = erf(4 * grad_match - 2)/2 + 0.5  ## input[0,1] -> [-2, 2] output[-1,1] -> [0,1]
         grad_match[grad_match < 0.2] = 0.0
@@ -36,7 +59,7 @@ class SidesComparison:
 
 
 
-        self.grad_presence = np.sum(erf(4 * self.reversed_side1_grad - 2)/2 + 0.5 + erf(4 * side2.grad - 2)/2 + 0.5)
+        self.grad_presence = np.sum(erf(4 * self.reversed_side1_grad - 2)/2 + 0.5 + erf(4 * self.side2.grad - 2)/2 + 0.5)
 
         self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
 
@@ -53,23 +76,96 @@ class SidesComparison:
         # self.DLR, self.DRL =  mahalanobis_merger(self,fragments)
         # self.score = self.DLR + self.DRL
 
-        self.is_valid_match = False
-        if self.side1.fragment_idx == self.side2.fragment_idx - 1 and self.side1.side_idx == 1 and self.side2.side_idx == 3:
-            self.is_valid_match = True
+
+    def predict_with_nn(self, fragments):
+        # print(f"fragment 1 rotation {fragments[self.side1.fragment_idx].rotation} fragment 2 rotation {fragments[self.side2.fragment_idx].rotation}")
+
+        # plt.figure(figsize=(10, 5))
+        # plt.subplot(1, 2, 1)
+        # plt.imshow(fragments[self.side1.fragment_idx].value)
+        # plt.axis('off')
+
+        # plt.subplot(1, 2, 2)
+        # plt.imshow(fragments[self.side2.fragment_idx].value)
+        # plt.axis('off')
 
 
-        elif self.side1.fragment_idx - 1 == self.side2.fragment_idx and self.side1.side_idx == 3 and self.side2.side_idx == 1:
-            self.is_valid_match = True
+        nr_of_fr1_rotations = (4 + 1 - self.side1.side_idx) % 4
+        nr_of_fr2_rotations = (4 + 3 - self.side2.side_idx) % 4
 
-        elif self.side1.fragment_idx == self.side2.fragment_idx - ROW_NR and self.side1.side_idx == 2 and self.side2.side_idx == 0:
-            self.is_valid_match = True
+        fr1_img = rotate_image(fragments[self.side1.fragment_idx].value, nr_of_fr1_rotations)
+        fr2_img = rotate_image(fragments[self.side2.fragment_idx].value, nr_of_fr2_rotations)
 
+        # print(f"comparing side {self.side1.side_idx} and side {self.side2.side_idx}")
+        # plt.figure(figsize=(10, 5))
+        # plt.subplot(1, 2, 1)
+        # plt.imshow(fr1_img)
+        # plt.axis('off')
 
-        if self.side1.fragment_idx - ROW_NR == self.side2.fragment_idx and self.side1.side_idx == 0 and self.side2.side_idx == 1:
-            self.is_valid_match = True
+        # plt.subplot(1, 2, 2)
+        # plt.imshow(fr2_img)
+        # plt.axis('off')
 
+        fr2_img = np.fliplr(fr2_img)  # flip for side-to-side match
 
+        # Preprocess
+        fr1_tensor = preprocess_for_model(fr1_img).to(self.device)
+        fr2_tensor = preprocess_for_model(fr2_img).to(self.device)
+
+        self.model.eval()
+        with torch.no_grad():
+            output = self.model(fr1_tensor, fr2_tensor).squeeze()
+            score = torch.sigmoid(output).item()
+            self.score = score 
 
 
     def __str__(self):
         return (f"Sides Comp: Score={self.score} Fragment_idx1={self.side1.fragment_idx}, Side_idx1={self.side1.side_idx}; fragment_idx2={self.side2.fragment_idx}, side_idx2={self.side2.side_idx}")
+    
+
+
+
+
+class SiameseCNN(nn.Module):
+    def __init__(self):
+        super(SiameseCNN, self).__init__()
+        self.feature_extractor = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, padding=1),  # Input: 3x64x64
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2),  # Output: 64x32x32
+
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2),  # Output: 128x16x16
+
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(2)   # Output: 256x8x8
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(256 * 8 * 8, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1)
+        )
+
+
+    def forward(self, piece1, piece2):
+        feat1 = self.feature_extractor(piece1)
+        feat2 = self.feature_extractor(piece2)
+
+        diff = torch.abs(feat1 - feat2)
+        diff = diff.view(diff.size(0), -1)
+
+        out = self.classifier(diff)
+        return out
+
+
+
