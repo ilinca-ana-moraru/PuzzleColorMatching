@@ -2,7 +2,7 @@ import numpy as np
 import os
 from rotation import *
 
-def write_sol_comp(gt_grid, rotations):
+def write_sol_comp(gt_grid, rotations,solution_path):
     gt_grid = np.array(gt_grid)
 
     n, m = gt_grid.shape
@@ -23,9 +23,8 @@ def write_sol_comp(gt_grid, rotations):
                 side2_idx = find_side_idx_of_orientation((-1)*rotations[fr2_idx], 0)
                 comparisons.append((fr1_idx, fr2_idx, side1_idx, side2_idx))
 
-    output_path = os.path.join("solution", "valid_comparisons.txt")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w") as f:
+    os.makedirs(os.path.dirname(solution_path), exist_ok=True)
+    with open(solution_path, "w") as f:
         for fr1, fr2, s1, s2 in comparisons:
             f.write(f"{int(fr1)},{int(fr2)},{int(s1)},{int(s2)}\n")
 

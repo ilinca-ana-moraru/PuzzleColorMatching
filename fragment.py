@@ -73,7 +73,7 @@ class Fragment:
             self.sides.append(Side(side_value, side_grad, side_indexes, first_corner_idx, self.fragment_idx, self.rotation))
     
 
-def divide_image(image_path, output_folder, n, m):
+def divide_image(image_path, output_folder,solution_path, n, m):
     random.seed(17)
 
     os.makedirs(output_folder, exist_ok=True)
@@ -105,9 +105,9 @@ def divide_image(image_path, output_folder, n, m):
             fr = Fragment(rotated_fragment, i*m + j)
             fragments.append(fr)
     
-    write_sol_comp(gt_grid, rotations)
+    write_sol_comp(gt_grid, rotations,solution_path)
 
-    print("Rotations by fragment:", ', '.join([f"{idx}){rotation}" for idx, rotation in enumerate(rotations)]))
+    # print("Rotations by fragment:", ', '.join([f"{idx}){rotation}" for idx, rotation in enumerate(rotations)]))
     return fragments, tile_h, tile_w
 
 

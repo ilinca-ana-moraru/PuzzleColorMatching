@@ -6,8 +6,9 @@ from rotation import *
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-
-
+from tqdm import tqdm
+from typing import List
+from fragment import *
 
 def preprocess_for_model(img):
     img = img[:, :, :3] 
@@ -16,9 +17,20 @@ def preprocess_for_model(img):
     img = np.transpose(img, (2, 0, 1))
     return torch.tensor(img).unsqueeze(0)
 
+def create_fragment_rotation_dictionary(fragments):
+    fr_rotation_dict = {}
+    print("Creating rotation dictionary for all fragments")
+    for idx, f in tqdm(enumerate(fragments)):
+        rotations = []
+        for r in range(4):
+            rotated = rotate_image(f.value, r) 
+            rotations.append(rotated)
+        fr_rotation_dict[idx] = rotations  
+
+    return fr_rotation_dict
 
 class SidesComparison:
-    def __init__(self, fragments, side1 : Side, side2: Side):
+    def __init__(self, fragments, side1 : Side, side2: Side, fragment_rotation_dictionary):
         self.side1 = side1
         self.side2 = side2
         self.model = global_values.MODEL
@@ -27,7 +39,7 @@ class SidesComparison:
         if global_values.GRAD_SCORING == True:
             self.grad_scoring()
         else:
-            self.predict_with_nn(fragments)
+            self.predict_with_nn(fragments, fragment_rotation_dictionary)
 
 
     def grad_scoring(self):
@@ -77,7 +89,7 @@ class SidesComparison:
         # self.score = self.DLR + self.DRL
 
 
-    def predict_with_nn(self, fragments):
+    def predict_with_nn(self, fragments, fragment_rotation_dictionary):
         # print(f"fragment 1 rotation {fragments[self.side1.fragment_idx].rotation} fragment 2 rotation {fragments[self.side2.fragment_idx].rotation}")
 
         # plt.figure(figsize=(10, 5))
@@ -93,8 +105,9 @@ class SidesComparison:
         nr_of_fr1_rotations = (4 + 1 - self.side1.side_idx) % 4
         nr_of_fr2_rotations = (4 + 3 - self.side2.side_idx) % 4
 
-        fr1_img = rotate_image(fragments[self.side1.fragment_idx].value, nr_of_fr1_rotations)
-        fr2_img = rotate_image(fragments[self.side2.fragment_idx].value, nr_of_fr2_rotations)
+        fr1_img = fragment_rotation_dictionary[self.side1.fragment_idx][nr_of_fr1_rotations]
+        fr2_img = fragment_rotation_dictionary[self.side2.fragment_idx][nr_of_fr2_rotations]
+
 
         # print(f"comparing side {self.side1.side_idx} and side {self.side2.side_idx}")
         # plt.figure(figsize=(10, 5))
@@ -105,10 +118,9 @@ class SidesComparison:
         # plt.subplot(1, 2, 2)
         # plt.imshow(fr2_img)
         # plt.axis('off')
-
+        # plt.show()
         fr2_img = np.fliplr(fr2_img)  # flip for side-to-side match
 
-        # Preprocess
         fr1_tensor = preprocess_for_model(fr1_img).to(self.device)
         fr2_tensor = preprocess_for_model(fr2_img).to(self.device)
 
@@ -122,6 +134,33 @@ class SidesComparison:
     def __str__(self):
         return (f"Sides Comp: Score={self.score} Fragment_idx1={self.side1.fragment_idx}, Side_idx1={self.side1.side_idx}; fragment_idx2={self.side2.fragment_idx}, side_idx2={self.side2.side_idx}")
     
+
+
+def create_sides_comparisons(fragments: List[Fragment], fragment_rotation_dictionary):
+    sides_comparisons = []
+    for fr_idx1 in tqdm(range(len(fragments) - 1)):
+        for side_idx1 in range(len(fragments[fr_idx1].sides)):
+            side1 = fragments[fr_idx1].sides[side_idx1]
+            
+            if all(len(side1.value) >= len(fragments[fr_idx1].sides[side_idx].value) for side_idx in range(len(fragments[fr_idx1].sides))):
+                for fr_idx2 in range(fr_idx1 + 1, len(fragments)):
+                    for side_idx2 in range(len(fragments[fr_idx2].sides)):
+                        side2 = fragments[fr_idx2].sides[side_idx2]
+                        if len(side1.value) == len(side2.value):
+                            if  global_values.ROTATING_PIECES or ((side1.side_idx == 2 and side2.side_idx == 0) or (side1.side_idx == 1 and side2.side_idx == 3) \
+                            or (side1.side_idx == 0 and side2.side_idx == 2) or (side1.side_idx == 3 and side2.side_idx == 1)):
+                                sides_comparisons.append(SidesComparison(fragments, side1, side2, fragment_rotation_dictionary))
+                                # print(f"fragment {fr_idx1} side {side_idx1} VS fragment {fr_idx2} side {side_idx2}")
+
+    
+    return sides_comparisons  
+
+
+def sort_sides_comparisons(sides_comparisons: List[SidesComparison]):
+        return sorted(sides_comparisons, key=lambda x: x.score)
+
+
+
 
 
 
