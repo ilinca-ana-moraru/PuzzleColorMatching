@@ -35,6 +35,7 @@ class SidesComparison:
         self.side2 = side2
         self.model = global_values.MODEL
         self.device = global_values.DEVICE
+        self.buddy_score = None
 
         if global_values.GRAD_SCORING == True:
             self.grad_scoring()
@@ -43,7 +44,6 @@ class SidesComparison:
 
 
     def grad_scoring(self):
-        self.buddy_score = None
 
         self.reversed_side1_value = self.side1.value[::-1]
         self.color_points_distances = abs(self.reversed_side1_value - self.side2.value)
@@ -154,6 +154,20 @@ def create_sides_comparisons(fragments: List[Fragment], fragment_rotation_dictio
 
     
     return sides_comparisons  
+
+
+
+def calculate_buddy_score(fragments,sides_comparisons):
+    best_score = [[None for _ in range(4)] for _ in range(len(fragments))]
+    for s in sides_comparisons:
+        if best_score[s.side1.fragment_idx][s.side1.side_idx] is None or s.score < best_score[s.side1.fragment_idx][s.side1.side_idx]:
+            best_score[s.side1.fragment_idx][s.side1.side_idx] = s.score
+
+        if best_score[s.side2.fragment_idx][s.side2.side_idx] is None or s.score < best_score[s.side2.fragment_idx][s.side2.side_idx]:
+            best_score[s.side2.fragment_idx][s.side2.side_idx] = s.score
+
+    for s in sides_comparisons:
+        s.buddy_score = s.score/best_score[s.side1.fragment_idx][s.side1.side_idx] + s.score/best_score[s.side2.fragment_idx][s.side2.side_idx]
 
 
 def sort_sides_comparisons(sides_comparisons: List[SidesComparison]):

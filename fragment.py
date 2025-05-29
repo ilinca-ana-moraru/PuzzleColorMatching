@@ -81,7 +81,7 @@ def divide_image(image_path, output_folder,solution_path, n, m):
     rgb_image = rgb_image[..., ::-1]
     rgba_image = cv.cvtColor(rgb_image, cv.COLOR_BGR2BGRA)
     h, w = rgba_image.shape[:2] 
-
+    h =  w = min(h,w)
     tile_h, tile_w = h // n, w // m  
     gt_grid = [[0 for _ in range(n)] for _ in range(m)]
 
@@ -94,10 +94,12 @@ def divide_image(image_path, output_folder,solution_path, n, m):
             fr_idx = i * m + j
 
             if global_values.ROTATING_PIECES:
-                rotation = int(random.randint(0, 3)) 
-                rotations[fr_idx] = rotation
+                # rotation = int(random.randint(0, 3)) 
+                rotation = 0
             else:
                 rotation = 0
+            rotations[fr_idx] = rotation
+
             gt_grid[i][j] = fr_idx
             rotated_fragment = rotate_image(cropped_fragment, rotation)
             fragment_path = os.path.join(output_folder, f"fragment_{fr_idx}.jpg")
@@ -107,7 +109,7 @@ def divide_image(image_path, output_folder,solution_path, n, m):
     
     write_sol_comp(gt_grid, rotations,solution_path)
 
-    # print("Rotations by fragment:", ', '.join([f"{idx}){rotation}" for idx, rotation in enumerate(rotations)]))
+    print("Rotations by fragment:", ', '.join([f"{idx}){rotation}" for idx, rotation in enumerate(rotations)]))
     return fragments, tile_h, tile_w
 
 
