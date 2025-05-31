@@ -217,7 +217,7 @@ def does_merge_fit_within_bounds(shifted_anchor_group: Group):
 
 
 
-def check_all_group_matchings_scores(fragments, pasted_group_additional_rotation, shifted_anchor_group: Group, shifted_pasted_group: Group):
+def check_all_group_matchings_scores(one_image_condition, mean_condition, fragments, pasted_group_additional_rotation, shifted_anchor_group: Group, shifted_pasted_group: Group):
     total_score = 0.0
     total_matchings = 0
 
@@ -234,13 +234,10 @@ def check_all_group_matchings_scores(fragments, pasted_group_additional_rotation
                 pasted_fragment_rotation = (pasted_group_additional_rotation + fragments[pasted_fr_idx].rotation) % 4
                 side1 = find_side_idx_of_orientation(pasted_fragment_rotation, s1)
                 side2 = find_side_idx_of_orientation(fragments[anchor_fr_idx].rotation, s2)
-                # print(f"anchor side of orientation {s2} with fragment rotated  {fragments[anchor_fr_idx].rotation} times  has index {side2}")
-                # print(f"pasted side or orientation {s1} with fragment rotated {pasted_fragment_rotation} has index {side1}")
                 neighbor_comp = get_comparison(pasted_fr_idx, anchor_fr_idx, side1, side2)
                 if neighbor_comp:
                     # print(neighbor_comp)
-
-                    if neighbor_comp.score > global_values.IMAGE_TH:
+                    if not one_image_condition:
                         # print("a score too bad")
                         return False
                     total_score += neighbor_comp.score
@@ -252,7 +249,7 @@ def check_all_group_matchings_scores(fragments, pasted_group_additional_rotation
         return False
 
     average_score = total_score / total_matchings
-    if average_score > global_values.GROUP_TH:
+    if not mean_condition(average_score):
         # print("total score bad")
         return False
     
