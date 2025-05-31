@@ -69,6 +69,7 @@ class Fragment:
             rgb_values = self.value[:,:,:3]
             side_value = np.squeeze(rgb_values[side_indexes[:,0],side_indexes[:,1]]) 
             side_grad = self.grad[side_indexes[:,0],side_indexes[:,1]]
+      
             first_corner_idx_in_contour = second_corner_idx_in_contour
             self.sides.append(Side(side_value, side_grad, side_indexes, first_corner_idx, self.fragment_idx, self.rotation))
     

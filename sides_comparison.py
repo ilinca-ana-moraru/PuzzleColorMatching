@@ -66,41 +66,33 @@ class SidesComparison:
         self.reversed_side1_grad = self.side1.grad[::-1]
         grad_match = (self.reversed_side1_grad - self.side2.grad)
         grad_match = erf(4 * grad_match - 2)/2 + 0.5  ## input[0,1] -> [-2, 2] output[-1,1] -> [0,1]
-        grad_match[grad_match < 0.2] = 0.0
-        self.grad_match = np.sum(grad_match)/len(self.side1.value)
+        # grad_match[grad_match < 0.2] = 0.0
+        # self.grad_match = np.sum(grad_match)/len(self.side1.value)
 
 
 
         self.grad_presence = np.sum(erf(4 * self.reversed_side1_grad - 2)/2 + 0.5 + erf(4 * self.side2.grad - 2)/2 + 0.5)
 
-        self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
+        # self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
 
-        self.score = 1/(self.grad_presence + 0.000001)*np.sqrt(( self.grad_match)**2  + self.color_score**2)
+        self.score = 1/(self.grad_presence + 0.000001)* self.color_score
 
 
+        # print(f"color score: {self.color_score} grad score: {self.grad_score} grad match: {self.grad_match} grad presence: {self.grad_presence}")
+        self.prudent_score = self.score
         for i in color_score:
             if i > 0.3:
-                self.score *= 3
-        for i in grad_match:
-            if i > 0.3:
-                self.score *= 3
+                self.prudent_score *= 5
+        # for i in grad_match:
+        #     if i > 0.3:
+        #         self.score *= 3
+
 
         # self.DLR, self.DRL =  mahalanobis_merger(self,fragments)
         # self.score = self.DLR + self.DRL
 
 
     def predict_with_nn(self, fragments, fragment_rotation_dictionary):
-        # print(f"fragment 1 rotation {fragments[self.side1.fragment_idx].rotation} fragment 2 rotation {fragments[self.side2.fragment_idx].rotation}")
-
-        # plt.figure(figsize=(10, 5))
-        # plt.subplot(1, 2, 1)
-        # plt.imshow(fragments[self.side1.fragment_idx].value)
-        # plt.axis('off')
-
-        # plt.subplot(1, 2, 2)
-        # plt.imshow(fragments[self.side2.fragment_idx].value)
-        # plt.axis('off')
-
 
         nr_of_fr1_rotations = (4 + 1 - self.side1.side_idx) % 4
         nr_of_fr2_rotations = (4 + 3 - self.side2.side_idx) % 4
@@ -108,18 +100,7 @@ class SidesComparison:
         fr1_img = fragment_rotation_dictionary[self.side1.fragment_idx][nr_of_fr1_rotations]
         fr2_img = fragment_rotation_dictionary[self.side2.fragment_idx][nr_of_fr2_rotations]
 
-
-        # print(f"comparing side {self.side1.side_idx} and side {self.side2.side_idx}")
-        # plt.figure(figsize=(10, 5))
-        # plt.subplot(1, 2, 1)
-        # plt.imshow(fr1_img)
-        # plt.axis('off')
-
-        # plt.subplot(1, 2, 2)
-        # plt.imshow(fr2_img)
-        # plt.axis('off')
-        # plt.show()
-        fr2_img = np.fliplr(fr2_img)  # flip for side-to-side match
+        fr2_img = np.fliplr(fr2_img)  
 
         fr1_tensor = preprocess_for_model(fr1_img).to(self.device)
         fr2_tensor = preprocess_for_model(fr2_img).to(self.device)
@@ -132,7 +113,7 @@ class SidesComparison:
 
 
     def __str__(self):
-        return (f"Sides Comp: Score={self.score} Fragment_idx1={self.side1.fragment_idx}, Side_idx1={self.side1.side_idx}; fragment_idx2={self.side2.fragment_idx}, side_idx2={self.side2.side_idx}")
+        return (f"Sides Comp: Score={self.score} Buddy_Score:{self.buddy_score} Fragment_idx1={self.side1.fragment_idx}, Side_idx1={self.side1.side_idx}; fragment_idx2={self.side2.fragment_idx}, side_idx2={self.side2.side_idx}")
     
 
 
@@ -167,8 +148,9 @@ def calculate_buddy_score(fragments,sides_comparisons):
             best_score[s.side2.fragment_idx][s.side2.side_idx] = s.score
 
     for s in sides_comparisons:
-        s.buddy_score = s.score/best_score[s.side1.fragment_idx][s.side1.side_idx] + s.score/best_score[s.side2.fragment_idx][s.side2.side_idx]
-
+        s.buddy_score = s.score/best_score[s.side1.fragment_idx][s.side1.side_idx] + s.score/best_score[s.side2.fragment_idx][s.side2.side_idx] - 1
+        # s.score *= s.buddy_score
+    return sides_comparisons
 
 def sort_sides_comparisons(sides_comparisons: List[SidesComparison]):
         return sorted(sides_comparisons, key=lambda x: x.score)
