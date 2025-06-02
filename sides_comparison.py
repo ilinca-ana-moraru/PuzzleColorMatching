@@ -67,15 +67,15 @@ class SidesComparison:
         grad_match = (self.reversed_side1_grad - self.side2.grad)
         grad_match = erf(4 * grad_match - 2)/2 + 0.5  ## input[0,1] -> [-2, 2] output[-1,1] -> [0,1]
         # grad_match[grad_match < 0.2] = 0.0
-        # self.grad_match = np.sum(grad_match)/len(self.side1.value)
+        self.grad_match = np.sum(grad_match)/len(self.side1.value)
 
 
 
         self.grad_presence = np.sum(erf(4 * self.reversed_side1_grad - 2)/2 + 0.5 + erf(4 * self.side2.grad - 2)/2 + 0.5)
 
-        # self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
+        self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
 
-        self.score = 1/(self.grad_presence + 0.000001)* self.color_score
+        self.score = 1/(self.grad_presence + 0.000001)* np.sqrt(self.color_score**2 + self.grad_match**2)
 
 
         # print(f"color score: {self.color_score} grad score: {self.grad_score} grad match: {self.grad_match} grad presence: {self.grad_presence}")
@@ -149,7 +149,6 @@ def calculate_buddy_score(fragments,sides_comparisons):
 
     for s in sides_comparisons:
         s.buddy_score = s.score/best_score[s.side1.fragment_idx][s.side1.side_idx] + s.score/best_score[s.side2.fragment_idx][s.side2.side_idx] - 1
-        # s.score *= s.buddy_score
     return sides_comparisons
 
 def sort_sides_comparisons(sides_comparisons: List[SidesComparison]):

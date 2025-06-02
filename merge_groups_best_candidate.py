@@ -167,7 +167,6 @@ def solve_groups_safe(groups, fragments, fragment_idx_to_group_idx):
     return groups, fragments, fragment_idx_to_group_idx
 
 
-
 def update_edges_of_groups(groups, edges_of_groups_df, pasted_group_idx, anchor_group_idx):
     ## save empty_spots of unmerging groups
     new_edges_of_groups = []
