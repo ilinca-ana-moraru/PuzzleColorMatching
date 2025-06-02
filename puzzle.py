@@ -36,6 +36,9 @@ def sort_sides_comparisons(sides_comparisons: List[SidesComparison]):
         return sorted(sides_comparisons, key=lambda x: x.score)
 
 
+
+
+
 # def draw_red_border(fragment:Fragment, side: Side):
 #     fragment_value = fragment.value.copy()
 

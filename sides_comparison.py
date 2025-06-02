@@ -71,7 +71,7 @@ class SidesComparison:
 
 
 
-        self.grad_presence = np.sum(erf(4 * self.reversed_side1_grad - 2)/2 + 0.5 + erf(4 * self.side2.grad - 2)/2 + 0.5)
+        self.grad_presence = np.sum(erf(4 * self.reversed_side1_grad - 2)/2 + 0.5 + erf(4 * self.side2.grad - 2)/2 + 0.5)/len(self.side1.value) * 50
 
         self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
 
