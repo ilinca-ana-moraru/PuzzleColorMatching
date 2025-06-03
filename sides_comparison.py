@@ -140,7 +140,7 @@ def create_sides_comparisons(fragments: List[Fragment], fragment_rotation_dictio
 
 def calculate_buddy_score(fragments,sides_comparisons):
     best_score = [[None for _ in range(4)] for _ in range(len(fragments))]
-    for s in sides_comparisons:
+    for s in tqdm(sides_comparisons):
         if best_score[s.side1.fragment_idx][s.side1.side_idx] is None or s.score < best_score[s.side1.fragment_idx][s.side1.side_idx]:
             best_score[s.side1.fragment_idx][s.side1.side_idx] = s.score
 
