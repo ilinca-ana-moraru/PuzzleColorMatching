@@ -177,18 +177,15 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
             shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(
                 fragments, best_comp, groups[vote_group_idx], groups[candidate_group_idx]
             )
-            # Where was candidate group in the global grid:
             candidate_group_origin = groups[candidate_group_idx].fragment_positions[best_comp.side2.fragment_idx]
 
-            # Where is its target position after simulate_merge_positions:
             target_pos_in_anchor = shifted_pasted_group.fragment_positions[best_comp.side2.fragment_idx]
 
-            # How far must the group move globally:
             final_row_offset = target_pos_in_anchor[0] - candidate_group_origin[0]
             final_col_offset = target_pos_in_anchor[1] - candidate_group_origin[1]
 
             vote_key = (vote_group_idx, candidate_group_idx, final_row_offset, final_col_offset, pasted_group_additional_rotation)
-            print(f"group {vote_group_idx} (fragment {voting_fragment_idx} side {voting_side_idx}) voted for {candidate_group_idx} with offset {final_row_offset}, {final_col_offset}")
+            # print(f"group {vote_group_idx} (fragment {voting_fragment_idx} side {voting_side_idx}) voted for {candidate_group_idx} with offset {final_row_offset}, {final_col_offset}")
 
             vote_stats[vote_key][0] += 1
             vote_stats[vote_key][1] += best_score
