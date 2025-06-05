@@ -15,7 +15,7 @@ from fragment import *
 
 
 class SidesComparison:
-    def __init__(self, side1 : Side, side2: Side, score = None):
+    def __init__(self, fragments, side1 : Side, side2: Side, score = None):
         self.side1 = side1
         self.side2 = side2
         self.model = global_values.MODEL

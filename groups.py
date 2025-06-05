@@ -12,6 +12,7 @@ import copy
 
 def get_comparison(frag1, frag2, side1, side2):
     comp = global_values.SYMMETRIC_COMPARISONS[frag1][frag2][side1][side2]
+    
     # if comp is None:
     #     comp = global_values.SYMMETRIC_COMPARISONS[frag2][frag1][side2][side1]  
     # if comp is None:
@@ -120,6 +121,7 @@ class Group:
         for j in range(0, cropped_cols + 1):
             x = j * global_values.TILE_W
             ax.plot([x, x], [0, height], color=grid_color, linewidth=grid_thickness)
+        # neighbours
         # for i in range(1, self.row_nr - 1):
         #     for j in range(1, self.col_nr - 1):
         #         count = self.neighbours_grid[i][j]
@@ -349,7 +351,7 @@ def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group
     for i, ax in enumerate(axes):
         if i < n:
             ax.imshow(images[i])
-            # ax.set_title(f"Group {group_indices[i]}")
+            ax.set_title(f"Group {group_indices[i]}")
         ax.axis('off')
 
     plt.tight_layout()

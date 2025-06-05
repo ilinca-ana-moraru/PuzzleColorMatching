@@ -95,8 +95,8 @@ def divide_image(image_path, output_folder,solution_path, n, m):
             fr_idx = i * m + j
 
             if global_values.ROTATING_PIECES:
-                rotation = int(random.randint(0, 3)) 
-                # rotation = 0
+                # rotation = int(random.randint(0, 3)) 
+                rotation = 0
             else:
                 rotation = 0
             rotations[fr_idx] = rotation

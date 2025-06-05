@@ -143,79 +143,110 @@ def create_able_to_vote_sides_df(groups, fragments):
 def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condition, group_condition, one_match_th, group_th):
     while len(groups) > 1:
         voting_df = create_able_to_vote_sides_df(groups, fragments)
-    
-        vote_stats = defaultdict(lambda: [0, 0.0])
+
+        vote_stats = defaultdict(lambda: [0, 0.0])  # count, sum_score
         best_comp_for_vote_key = {}
+
+        # Voting loop
         for _, voter in voting_df.iterrows():
             voting_fragment_idx = voter['fragment_idx']
             voting_side_idx = voter['side_idx']
+
             best_comp = None
             best_score = None
 
+            # Compare with other fragments in different group
             for _, candidate in voting_df.iterrows():
                 candidate_fragment_idx = candidate['fragment_idx']
-                if  fragment_idx_to_group_idx[voting_fragment_idx] != fragment_idx_to_group_idx[candidate_fragment_idx] and candidate_fragment_idx != voting_fragment_idx:
+
+                if fragment_idx_to_group_idx[voting_fragment_idx] != fragment_idx_to_group_idx[candidate_fragment_idx] \
+                   and candidate_fragment_idx != voting_fragment_idx:
+
                     candidate_side_idx = candidate['side_idx']
                     comp = get_comparison(voting_fragment_idx, candidate_fragment_idx, voting_side_idx, candidate_side_idx)
-                    if best_score is None or best_score > comp.score:
+
+                    if comp is not None and (best_score is None or best_score > comp.score):
                         best_score = comp.score
                         best_comp = comp
 
+            # If no match found, skip this voter
+            if best_comp is None:
+                continue
+
+            # Compute how the groups would be merged
             offset_row, offset_col, pasted_group_additional_rotation = find_pasted_group_moving_distance_and_rotation(fragments, best_comp)
 
             vote_group_idx = fragment_idx_to_group_idx[best_comp.side1.fragment_idx]
             candidate_group_idx = fragment_idx_to_group_idx[best_comp.side2.fragment_idx]
 
-            vote_group = groups[vote_group_idx]
-            candidate_group = groups[candidate_group_idx]
-            candidate_group_copy = copy.deepcopy(candidate_group)
-            candidate_group_copy = rotate_fragments_positions(candidate_group_copy, pasted_group_additional_rotation)
+            # Build the new vote key
+            vote_key = (vote_group_idx, candidate_group_idx, offset_row, offset_col, pasted_group_additional_rotation)
 
-            vote_row, vote_col = vote_group.fragment_positions[best_comp.side1.fragment_idx]
-            candidate_row, candidate_col = candidate_group_copy.fragment_positions[best_comp.side2.fragment_idx]
-            row_offset = vote_row + offset_row - candidate_row
-            col_offset = vote_col + offset_col - candidate_col
-
-            vote_key = (vote_group_idx, candidate_group_idx, best_comp.side1.side_idx, best_comp.side2.side_idx, pasted_group_additional_rotation)
-
+            # Accumulate votes
             vote_stats[vote_key][0] += 1
             vote_stats[vote_key][1] += best_score
 
+            # Save comp for this vote_key (only once)
             if vote_key not in best_comp_for_vote_key:
                 best_comp_for_vote_key[vote_key] = best_comp
-        
-        vote_list = sorted(vote_stats.items(), key=lambda x: (-x[1][0], x[1][1] / x[1][0])) 
+
+        # Sort votes: first by most votes, then by mean score (lower is better)
+        vote_list = sorted(vote_stats.items(), key=lambda x: (-x[1][0], x[1][1] / x[1][0]))
+
         was_merged = False
         posibilities_remain = False
+
+        # Try each vote option in order
         for vote_key, (count, sum_score) in vote_list:
-            vote_group_idx, candidate_group_idx, anchor_side_idx, candidate_side_idx, rotation = vote_key
+            vote_group_idx, candidate_group_idx, offset_row, offset_col, rotation = vote_key
             mean_score = sum_score / count
             comp = best_comp_for_vote_key[vote_key]
 
-            shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(fragments, comp, groups[vote_group_idx], groups[candidate_group_idx])
+            # Simulate the merge
+            shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(
+                fragments, comp, groups[vote_group_idx], groups[candidate_group_idx])
 
             if does_merge_fit_within_bounds(shifted_anchor_group):
                 if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
                     posibilities_remain = True
-                    if check_all_group_matchings_scores(one_match_condition, group_condition,fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, one_match_th, group_th):
-                        print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({row_offset},{col_offset}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
-                        groups[vote_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
+
+                    if check_all_group_matchings_scores(
+                        one_match_condition, group_condition, fragments,
+                        pasted_group_additional_rotation,
+                        shifted_anchor_group, shifted_pasted_group,
+                        one_match_th, group_th):
+
+                        print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({offset_row},{offset_col}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
+
+                        # Perform merge
+                        groups[vote_group_idx] = merge_groups(
+                            fragments, pasted_group_additional_rotation,
+                            shifted_anchor_group, shifted_pasted_group,
+                            fragment_idx_to_group_idx)
+
                         update_after_merge(groups, fragments, fragment_idx_to_group_idx, candidate_group_idx)
+                        show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
+
                         was_merged = True
-                        break
-                    
-        if posibilities_remain == False:
+                        break  # Go back to top of while loop
+
+        # If no merge possible:
+        if not posibilities_remain:
             return groups, fragments, fragment_idx_to_group_idx
-        if was_merged == False:
+
+        # If no merge was done, relax thresholds and continue
+        if not was_merged:
             one_match_th *= 1.1
             group_th *= 1.1
             print(f"one match th {one_match_th} group th {group_th}")
+
+        # Termination condition
         if group_th >= 1:
-            print("valeu")
+            print("Terminating - group threshold too high")
             return groups, fragments, fragment_idx_to_group_idx
 
-
     return groups, fragments, fragment_idx_to_group_idx
+
 
 
 
