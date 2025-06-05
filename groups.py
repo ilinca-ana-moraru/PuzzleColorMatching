@@ -60,12 +60,33 @@ class Group:
 
     def show_group(self, fragments, extra_rotation):
 
-        height = self.row_nr * global_values.TILE_H
-        width = self.col_nr * global_values.TILE_W
-        canvas_img = np.zeros((height, width, 3), dtype=np.uint8)
+        if self.row_nr <= 2 or self.col_nr <= 2:
+            height = 100
+            width = 100
+            canvas_img = np.ones((height, width, 3), dtype=np.uint8) * 255
 
-        for i in range(self.row_nr):
-            for j in range(self.col_nr):
+            fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+            ax.imshow(canvas_img)
+            ax.axis("off")
+
+            canvas = FigureCanvas(fig)
+            canvas.draw()
+            img_array = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
+            img_array = img_array.reshape((int(fig.bbox.bounds[3]), int(fig.bbox.bounds[2]), 3))
+
+            plt.close(fig)
+
+            return img_array
+
+        cropped_rows = self.row_nr - 2
+        cropped_cols = self.col_nr - 2
+        height = cropped_rows * global_values.TILE_H
+        width = cropped_cols * global_values.TILE_W
+
+        canvas_img = np.ones((height, width, 3), dtype=np.uint8) * 255
+
+        for i in range(1, self.row_nr - 1): 
+            for j in range(1, self.col_nr - 1):
                 cell = self.grid[i][j]
                 if cell is not None:
                     fragment = fragments[cell]
@@ -73,27 +94,39 @@ class Group:
                     h, w = img.shape[:2]
 
                     if (h, w) != (global_values.TILE_H, global_values.TILE_W):
-                        img_resized = resize(img, (global_values.TILE_H, global_values.TILE_W), preserve_range=True, anti_aliasing=True)
+                        img_resized = resize(img, (global_values.TILE_H, global_values.TILE_W), preserve_range=True, anti_aliasing=True).astype(np.uint8)
                     else:
-                        img_resized = img
+                        img_resized = img.astype(np.uint8)
 
-                    img_rotated = rotate_image(img_resized, (fragment.rotation+extra_rotation)%4)                 
-                    top = i * global_values.TILE_H
-                    left = j * global_values.TILE_W
-                    canvas_img[top:top+global_values.TILE_H, left:left+global_values.TILE_W] = img_rotated
+                    img_rotated = rotate_image(img_resized, (fragment.rotation + extra_rotation) % 4)
 
+                    top = (i - 1) * global_values.TILE_H
+                    left = (j - 1) * global_values.TILE_W
+
+                    canvas_img[top:top + global_values.TILE_H, left:left + global_values.TILE_W] = img_rotated
 
         fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
         ax.imshow(canvas_img)
         ax.axis("off")
 
-        for i in range(self.row_nr):
-            for j in range(self.col_nr):
-                count = self.neighbours_grid[i][j]
-                if count > 0:
-                    x = j * global_values.TILE_W + global_values.TILE_W // 2
-                    y = i * global_values.TILE_H + global_values.TILE_H // 2
-                    ax.text(x, y, str(count), color='red', ha='center', va='center', fontsize=18, weight='bold')
+    
+        grid_thickness = 2
+        grid_color = 'black'
+
+        for i in range(0, cropped_rows + 1):
+            y = i * global_values.TILE_H
+            ax.plot([0, width], [y, y], color=grid_color, linewidth=grid_thickness)
+
+        for j in range(0, cropped_cols + 1):
+            x = j * global_values.TILE_W
+            ax.plot([x, x], [0, height], color=grid_color, linewidth=grid_thickness)
+        # for i in range(1, self.row_nr - 1):
+        #     for j in range(1, self.col_nr - 1):
+        #         count = self.neighbours_grid[i][j]
+        #         if count > 0:
+        #             x = (j - 1) * global_values.TILE_W + global_values.TILE_W // 2
+        #             y = (i - 1) * global_values.TILE_H + global_values.TILE_H // 2
+        #             ax.text(x, y, str(count), color='red', ha='center', va='center', fontsize=18, weight='bold')
 
         canvas = FigureCanvas(fig)
         canvas.draw()
@@ -316,7 +349,7 @@ def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group
     for i, ax in enumerate(axes):
         if i < n:
             ax.imshow(images[i])
-            ax.set_title(f"Group {group_indices[i]}")
+            # ax.set_title(f"Group {group_indices[i]}")
         ax.axis('off')
 
     plt.tight_layout()

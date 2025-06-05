@@ -144,11 +144,8 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
     while len(groups) > 1:
         voting_df = create_able_to_vote_sides_df(groups, fragments)
     
-
-        # For each vote key, we store [count, sum_score]
         vote_stats = defaultdict(lambda: [0, 0.0])
         best_comp_for_vote_key = {}
-        # Loop through voters
         for _, voter in voting_df.iterrows():
             voting_fragment_idx = voter['fragment_idx']
             voting_side_idx = voter['side_idx']
@@ -188,7 +185,6 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                 best_comp_for_vote_key[vote_key] = best_comp
         
         vote_list = sorted(vote_stats.items(), key=lambda x: (-x[1][0], x[1][1] / x[1][0])) 
-        # print("\nVotes ordered by number of votes:\n")
         was_merged = False
         posibilities_remain = False
         for vote_key, (count, sum_score) in vote_list:
@@ -200,8 +196,9 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
 
             if does_merge_fit_within_bounds(shifted_anchor_group):
                 if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
+                    posibilities_remain = True
                     if check_all_group_matchings_scores(one_match_condition, group_condition,fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, one_match_th, group_th):
-                        # print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({row_offset},{col_offset}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
+                        print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({row_offset},{col_offset}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
                         groups[vote_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
                         update_after_merge(groups, fragments, fragment_idx_to_group_idx, candidate_group_idx)
                         was_merged = True
@@ -212,9 +209,8 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
         if was_merged == False:
             one_match_th *= 1.1
             group_th *= 1.1
-            print(f"---------------------------")
             print(f"one match th {one_match_th} group th {group_th}")
-        if one_match_th == 5:
+        if group_th >= 1:
             print("valeu")
             return groups, fragments, fragment_idx_to_group_idx
 

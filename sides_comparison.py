@@ -17,17 +17,55 @@ def preprocess_for_model(img):
     img = np.transpose(img, (2, 0, 1))
     return torch.tensor(img).unsqueeze(0)
 
-def create_fragment_rotation_dictionary(fragments):
+
+def extract_tile(rotated_image, row, col, TILE_H, TILE_W):
+    y_start = row * TILE_H
+    y_end = y_start + TILE_H
+    x_start = col * TILE_W
+    x_end = x_start + TILE_W
+
+    return rotated_image[y_start:y_end, x_start:x_end, :]
+
+
+def create_fragment_rotation_dictionary(fragments, tile_h, tile_w):
+
+    full_h = global_values.ROW_NR * tile_h
+    full_w = global_values.COL_NR * tile_w
+
+    full_image = np.zeros((full_h, full_w, 3), dtype=fragments[0].value.dtype)
+
+    for idx, frag in enumerate(fragments):
+        row = idx // global_values.COL_NR
+        col = idx % global_values.COL_NR
+
+        y_start = row * tile_h
+        y_end = y_start + tile_h
+        x_start = col * tile_w
+        x_end = x_start + tile_w
+
+        full_image[y_start:y_end, x_start:x_end, :] = frag.value[:,:,:3]
+
+    rotated_images = []
+    for r in range(4):
+        rotated = rotate_image(full_image, r)
+        rotated_images.append(rotated)
+
     fr_rotation_dict = {}
-    print("Creating rotation dictionary for all fragments")
-    for idx, f in tqdm(enumerate(fragments)):
+
+    for idx in tqdm(range(len(fragments))):
+        row = idx // global_values.COL_NR
+        col = idx % global_values.COL_NR
+
         rotations = []
-        for r in range(4):
-            rotated = rotate_image(f.value, r) 
-            rotations.append(rotated)
-        fr_rotation_dict[idx] = rotations  
+        for r in rotated_images:
+            tile = extract_tile(r, row, col, tile_h, tile_w)
+            rotations.append(tile)
+
+        fr_rotation_dict[idx] = rotations
 
     return fr_rotation_dict
+
+
 
 class SidesComparison:
     def __init__(self, fragments, side1 : Side, side2: Side, fragment_rotation_dictionary):
