@@ -225,7 +225,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                             fragment_idx_to_group_idx)
 
                         update_after_merge(groups, fragments, fragment_idx_to_group_idx, candidate_group_idx)
-                        show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
+                        # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
 
                         was_merged = True
                         break
