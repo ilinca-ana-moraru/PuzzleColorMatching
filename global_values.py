@@ -7,7 +7,7 @@ np.set_printoptions(threshold=np.inf)
 from utils import *
 from typing import List
 
-ROTATING_PIECES = False
+ROTATING_PIECES = True
 
 GRAD_SCORING = False
 NN_SCORING = True

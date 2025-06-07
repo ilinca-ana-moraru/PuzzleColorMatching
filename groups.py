@@ -325,7 +325,7 @@ def merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_gro
 
     return shifted_anchor_group
 
-def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group, max_cols=8):
+def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group, max_cols=25):
     images = []
     group_indices = []
 
@@ -351,7 +351,7 @@ def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group
     for i, ax in enumerate(axes):
         if i < n:
             ax.imshow(images[i])
-            ax.set_title(f"Grupul {group_indices[i]}")
+            # ax.set_title(f"Grupul {group_indices[i]}")
         ax.axis('off')
 
     plt.tight_layout()

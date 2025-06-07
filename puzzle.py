@@ -196,7 +196,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
 
             vote_key = (vote_group_idx, candidate_group_idx, final_row_offset, final_col_offset, pasted_group_additional_rotation)
 
-            print(f"group {vote_group_idx} (fragment {voting_fragment_idx} side {voting_side_idx}) voted for {candidate_group_idx} with offset {final_row_offset}, {final_col_offset}")
+            # print(f"group {vote_group_idx} (fragment {voting_fragment_idx} side {voting_side_idx}) voted for {candidate_group_idx} with offset {final_row_offset}, {final_col_offset}")
 
             vote_stats[vote_key][0] += 1
             vote_stats[vote_key][1] += best_score
@@ -238,7 +238,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                             fragment_idx_to_group_idx)
 
                         update_after_merge(groups, fragments, fragment_idx_to_group_idx, candidate_group_idx)
-                        show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
+                        # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 1)
 
                         was_merged = True
                         break
