@@ -2,6 +2,13 @@ import numpy as np
 import os
 from rotation import *
 
+
+
+
+
+
+
+
 def write_sol_comp(gt_grid, rotations,solution_path):
     gt_grid = np.array(gt_grid)
 
@@ -42,6 +49,20 @@ def read_valid_comparisons(filepath):
             if len(parts) == 4:
                 comparisons.append(tuple(parts))
     return comparisons
+
+
+def read_valid_comparisons(filepath):
+    comparisons = []
+    with open(filepath, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue 
+            parts = list(map(int, line.split(",")))
+            if len(parts) == 4:
+                comparisons.append(tuple(parts))
+    return comparisons
+
 
 
 def solution_distace(solution_grid, gt_grid):

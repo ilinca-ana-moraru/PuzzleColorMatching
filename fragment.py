@@ -114,7 +114,7 @@ def divide_image(image_path, output_folder,solution_path, n, m):
     
     write_sol_comp(gt_grid, rotations,solution_path)
 
-    print("Rotations by fragment:", ', '.join([f"{idx}){rotation}" for idx, rotation in enumerate(rotations)]))
+    # print("Rotations by fragment:", ', '.join([f"{idx}){rotation}" for idx, rotation in enumerate(rotations)]))
     return fragments, tile_h, tile_w, gt_grid, rotations
 
 

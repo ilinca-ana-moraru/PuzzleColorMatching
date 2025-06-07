@@ -14,34 +14,8 @@ from tqdm import tqdm
 from global_values import *
 from groups import *
 
-# def create_sides_comparisons(fragments: List[Fragment]):
-#     sides_comparisons = []
-#     for fr_idx1 in tqdm(range(len(fragments) - 1)):
-#         for side_idx1 in range(len(fragments[fr_idx1].sides)):
-#             side1 = fragments[fr_idx1].sides[side_idx1]
-            
-#             if all(len(side1.value) >= len(fragments[fr_idx1].sides[side_idx].value) for side_idx in range(len(fragments[fr_idx1].sides))):
-#                 for fr_idx2 in range(fr_idx1 + 1, len(fragments)):
-#                     for side_idx2 in range(len(fragments[fr_idx2].sides)):
-#                         side2 = fragments[fr_idx2].sides[side_idx2]
-#                         if len(side1.value) == len(side2.value):
-#                             if  ROTATING_PIECES or ((side1.side_idx == 2 and side2.side_idx == 0) or (side1.side_idx == 1 and side2.side_idx == 3) \
-#                             or (side1.side_idx == 0 and side2.side_idx == 2) or (side1.side_idx == 3 and side2.side_idx == 1)):
-#                                 sides_comparisons.append(SidesComparison(fragments, side1, side2))
-#                                 # print(f"fragment {fr_idx1} side {side_idx1} VS fragment {fr_idx2} side {side_idx2}")
-
-    
-#     return sides_comparisons  
-
-
-def sort_sides_comparisons(sides_comparisons: List[SidesComparison]):
-        return sorted(sides_comparisons, key=lambda x: x.score)
-
-
-
 
 def get_matches_accuracy(gt_comparisons, groups, fragments):
-
     comparisons = []
 
     for g in groups:
@@ -56,7 +30,7 @@ def get_matches_accuracy(gt_comparisons, groups, fragments):
                         side1_idx = find_side_idx_of_orientation(fragments[fr1_idx].rotation, 1)
                         fr2_idx = g.grid[i][j + 1]
                         if fr2_idx is not None:
-                            side2_idx = find_side_idx_of_orientation(fragments[fr2_idx].rotation,3)
+                            side2_idx = find_side_idx_of_orientation(fragments[fr2_idx].rotation, 3)
                             comparisons.append((fr1_idx, fr2_idx, side1_idx, side2_idx))
 
                     if i + 1 < n:
@@ -67,16 +41,33 @@ def get_matches_accuracy(gt_comparisons, groups, fragments):
                             comparisons.append((fr1_idx, fr2_idx, side1_idx, side2_idx))
 
     correct = 0
-    nr_of_comp = int((2 * 4 + 3 * ((global_values.COL_NR - 2) * 2 + (global_values.ROW_NR - 2)* 2) + 4 * ((global_values.COL_NR -2) * (global_values.COL_NR-2)))/2)
-    for s_comp in comparisons:
-        for gt_comp in gt_comparisons:
-            if s_comp == gt_comp:
-                correct+=1
-            if s_comp[0] == gt_comp[1] and s_comp[1] == gt_comp[0] and s_comp[2] == gt_comp[3] and s_comp[3] == gt_comp[2]:
-                correct+=1
+    wrong = 0
 
-    accuracy = (correct/nr_of_comp) * 100
-    print(f"Accuracy of algorithm: {accuracy}%")
+    nr_of_comp = int((2 * 4 + 3 * ((global_values.COL_NR - 2) * 2 + (global_values.ROW_NR - 2) * 2) + 4 * ((global_values.COL_NR - 2) * (global_values.COL_NR - 2))) / 2)
+
+    for s_comp in comparisons:
+        match_found = False
+        for gt_comp in gt_comparisons:
+            if s_comp == gt_comp or \
+               (s_comp[0] == gt_comp[1] and s_comp[1] == gt_comp[0] and s_comp[2] == gt_comp[3] and s_comp[3] == gt_comp[2]):
+                correct += 1
+                match_found = True
+                break  # o singură dată contează
+
+        if not match_found:
+            wrong += 1
+
+    accuracy = (correct / nr_of_comp) * 100
+    false_perc = (wrong / nr_of_comp) * 100 if comparisons else 0
+
+    return accuracy, false_perc
+
+
+
+def sort_sides_comparisons(sides_comparisons: List[SidesComparison]):
+        return sorted(sides_comparisons, key=lambda x: x.score)
+
+
 
 
 def merge_where_obvious(one_match_condition, mean_condition, one_image_th, group_th, sorted_sides_comparisons, fragment_idx_to_group_idx, fragments, groups):
@@ -205,11 +196,11 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                 best_comp_for_vote_key[vote_key] = best_comp
 
         vote_list = sorted(vote_stats.items(), key=lambda x: (-x[1][0], x[1][1] / x[1][0]))
-        if vote_list:
-            for v in vote_list:
-                print(v)
-        else:
-            print("vote list empty")
+        # if vote_list:
+        #     for v in vote_list:
+        #         print(v)
+        # else:
+        #     print("vote list empty")
         was_merged = False
 
         for vote_key, (count, sum_score) in vote_list:
@@ -226,7 +217,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
 
                     if check_all_group_matchings_scores(one_match_condition, group_condition, fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, one_match_th, group_th):
 
-                        print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({offset_row},{offset_col}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
+                        # print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({offset_row},{offset_col}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
 
                         groups[vote_group_idx] = merge_groups(
                             fragments, pasted_group_additional_rotation,
@@ -242,10 +233,9 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
         if not was_merged:
             one_match_th *= 1.2
             group_th *= 1.2
-            print(f"one match th {one_match_th} group th {group_th}")
+            # print(f"one match th {one_match_th} group th {group_th}")
 
         if group_th >= 1:
-            print("Terminating - group threshold too high")
             return groups, fragments, fragment_idx_to_group_idx
 
     return groups, fragments, fragment_idx_to_group_idx

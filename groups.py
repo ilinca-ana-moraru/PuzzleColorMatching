@@ -351,11 +351,11 @@ def show_all_groups(groups, fragments, fr_idx_to_group_idx, dont_show_1_fr_group
     for i, ax in enumerate(axes):
         if i < n:
             ax.imshow(images[i])
-            # ax.set_title(f"Grupul {group_indices[i]}")
+            ax.set_title(f"Grupul {group_indices[i]}")
         ax.axis('off')
 
     plt.tight_layout()
     plt.show()
 
-
+    return fig
 
