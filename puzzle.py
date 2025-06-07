@@ -3,6 +3,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
+from collections import defaultdict
 
 from fragment import *
 from side import *
@@ -140,8 +141,6 @@ def create_able_to_vote_sides_df(groups, fragments):
 
     return df
 
-from collections import defaultdict
-
 def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condition, group_condition, one_match_th, group_th):
     while len(groups) > 1:
         voting_df = create_able_to_vote_sides_df(groups, fragments)
@@ -162,10 +161,22 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                 if fragment_idx_to_group_idx[voting_fragment_idx] != fragment_idx_to_group_idx[candidate_fragment_idx] and candidate_fragment_idx != voting_fragment_idx:
                     candidate_side_idx = candidate['side_idx']
                     comp = get_comparison(voting_fragment_idx, candidate_fragment_idx, voting_side_idx, candidate_side_idx)
-
                     if comp is not None and (best_score is None or best_score > comp.score):
-                        best_score = comp.score
-                        best_comp = comp
+                        vote_group_idx = fragment_idx_to_group_idx[comp.side1.fragment_idx]
+                        candidate_group_idx = fragment_idx_to_group_idx[comp.side2.fragment_idx]
+                        shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(fragments, comp, groups[vote_group_idx], groups[candidate_group_idx])
+                        if does_merge_fit_within_bounds(shifted_anchor_group):
+                            if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
+                                posibilities_remain = True
+
+                                if check_all_group_matchings_scores(
+                                    one_match_condition, group_condition, fragments,
+                                    pasted_group_additional_rotation,
+                                    shifted_anchor_group, shifted_pasted_group,
+                                    one_match_th, group_th):
+
+                                    best_score = comp.score
+                                    best_comp = comp
 
             if best_comp is None:
                 continue
@@ -173,19 +184,19 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
             vote_group_idx = fragment_idx_to_group_idx[best_comp.side1.fragment_idx]
             candidate_group_idx = fragment_idx_to_group_idx[best_comp.side2.fragment_idx]
 
-            offset_row, offset_col, pasted_group_additional_rotation = find_pasted_group_moving_distance_and_rotation(fragments, best_comp)
             shifted_anchor_group, shifted_pasted_group, pasted_group_additional_rotation = simulate_merge_positions(
                 fragments, best_comp, groups[vote_group_idx], groups[candidate_group_idx]
             )
-            candidate_group_origin = groups[candidate_group_idx].fragment_positions[best_comp.side2.fragment_idx]
 
+            candidate_group_origin = groups[candidate_group_idx].fragment_positions[best_comp.side2.fragment_idx]
             target_pos_in_anchor = shifted_pasted_group.fragment_positions[best_comp.side2.fragment_idx]
 
             final_row_offset = target_pos_in_anchor[0] - candidate_group_origin[0]
             final_col_offset = target_pos_in_anchor[1] - candidate_group_origin[1]
 
             vote_key = (vote_group_idx, candidate_group_idx, final_row_offset, final_col_offset, pasted_group_additional_rotation)
-            # print(f"group {vote_group_idx} (fragment {voting_fragment_idx} side {voting_side_idx}) voted for {candidate_group_idx} with offset {final_row_offset}, {final_col_offset}")
+
+            print(f"group {vote_group_idx} (fragment {voting_fragment_idx} side {voting_side_idx}) voted for {candidate_group_idx} with offset {final_row_offset}, {final_col_offset}")
 
             vote_stats[vote_key][0] += 1
             vote_stats[vote_key][1] += best_score
@@ -194,9 +205,12 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                 best_comp_for_vote_key[vote_key] = best_comp
 
         vote_list = sorted(vote_stats.items(), key=lambda x: (-x[1][0], x[1][1] / x[1][0]))
-
+        if vote_list:
+            for v in vote_list:
+                print(v)
+        else:
+            print("vote list empty")
         was_merged = False
-        posibilities_remain = False
 
         for vote_key, (count, sum_score) in vote_list:
             vote_group_idx, candidate_group_idx, offset_row, offset_col, rotation = vote_key
@@ -209,7 +223,6 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
 
             if does_merge_fit_within_bounds(shifted_anchor_group):
                 if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
-                    posibilities_remain = True
 
                     if check_all_group_matchings_scores(
                         one_match_condition, group_condition, fragments,
@@ -225,17 +238,14 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                             fragment_idx_to_group_idx)
 
                         update_after_merge(groups, fragments, fragment_idx_to_group_idx, candidate_group_idx)
-                        # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
+                        show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
 
                         was_merged = True
                         break
 
-        if not posibilities_remain:
-            return groups, fragments, fragment_idx_to_group_idx
-
         if not was_merged:
-            one_match_th *= 1.1
-            group_th *= 1.1
+            one_match_th *= 1.2
+            group_th *= 1.2
             print(f"one match th {one_match_th} group th {group_th}")
 
         if group_th >= 1:
@@ -243,6 +253,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
             return groups, fragments, fragment_idx_to_group_idx
 
     return groups, fragments, fragment_idx_to_group_idx
+
 
 
 
