@@ -84,19 +84,19 @@ def divide_image(image_path, output_folder,solution_path, n, m):
     h, w = rgba_image.shape[:2] 
     h =  w = min(h,w)
     tile_h, tile_w = h // n, w // m  
-    gt_grid = [[0 for _ in range(n)] for _ in range(m)]
+    gt_grid = [[0 for _ in range(m)] for _ in range(n)]
 
     fragments = [None for _ in range(n*m)]
     rotations = np.zeros((n*m))
     ids = list(range(n * m))
     random.shuffle(ids)
-    print(f"Ids: {ids}")
+
     for i in range(n):
         for j in range(m):
             x, y = j * tile_w, i * tile_h  
             cropped_fragment = rgba_image[y:y + tile_h, x:x + tile_w]  
-            # fr_idx = i * m + j
-            fr_idx = ids[i * m + j]
+            fr_idx = i * m + j
+            # fr_idx = ids[i * m + j]
 
             if global_values.ROTATING_PIECES:
                 rotation = int(random.randint(0, 3)) 
@@ -115,6 +115,6 @@ def divide_image(image_path, output_folder,solution_path, n, m):
     write_sol_comp(gt_grid, rotations,solution_path)
 
     print("Rotations by fragment:", ', '.join([f"{idx}){rotation}" for idx, rotation in enumerate(rotations)]))
-    return fragments, tile_h, tile_w
+    return fragments, tile_h, tile_w, gt_grid, rotations
 
 

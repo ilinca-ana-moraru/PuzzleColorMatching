@@ -224,11 +224,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
             if does_merge_fit_within_bounds(shifted_anchor_group):
                 if check_groups_shapes_for_merging(shifted_anchor_group, shifted_pasted_group):
 
-                    if check_all_group_matchings_scores(
-                        one_match_condition, group_condition, fragments,
-                        pasted_group_additional_rotation,
-                        shifted_anchor_group, shifted_pasted_group,
-                        one_match_th, group_th):
+                    if check_all_group_matchings_scores(one_match_condition, group_condition, fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, one_match_th, group_th):
 
                         print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({offset_row},{offset_col}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
 

@@ -44,3 +44,44 @@ def read_valid_comparisons(filepath):
     return comparisons
 
 
+def solution_distace(solution_grid, gt_grid):
+    best_score = None
+
+    positions = []
+    for i in range(len(solution_grid)):
+        for j in range(len(solution_grid[0])):
+            fr_idx = solution_grid[i][j]
+            if fr_idx is not None:
+                positions.append((i, j))
+
+
+    min_i = min(pos[0] for pos in positions)
+    min_j = min(pos[1] for pos in positions)
+    current_positions = {}
+    for i in range(len(solution_grid)):
+        for j in range(len(solution_grid[0])):
+            fr_idx = solution_grid[i][j]
+            norm_i = i - min_i
+            norm_j = j - min_j
+            current_positions[fr_idx] = (norm_i, norm_j)
+
+    for rotation in range(4): 
+        gt_grid_rotated = np.rot90(np.array(gt_grid), k=rotation).tolist()
+
+        total_distance = 0.0
+
+        for i_gt in range(len(gt_grid_rotated)):
+            for j_gt in range(len(gt_grid_rotated[0])):
+                fr_idx = gt_grid_rotated[i_gt][j_gt]
+                if fr_idx in current_positions:
+                    i_curr, j_curr = current_positions[fr_idx]
+                    distance = np.sqrt((i_curr - i_gt) ** 2 + (j_curr - j_gt) ** 2)
+                    total_distance += distance
+
+
+        if  best_score is None or total_distance < best_score:
+            best_score = total_distance
+
+    return best_score
+
+

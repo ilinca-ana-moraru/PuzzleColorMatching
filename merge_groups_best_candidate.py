@@ -332,7 +332,7 @@ def solve_groups_safe_reparing(groups, fragments, fragment_idx_to_group_idx, big
         )
         groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
         update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
-        show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
+        # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
         print(f"biggest group: {biggest_group_idx}")
     return groups, fragments, fragment_idx_to_group_idx
 
