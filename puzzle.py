@@ -13,7 +13,7 @@ from puzzle import *
 from tqdm import tqdm
 from global_values import *
 from groups import *
-
+# from utils import mahalanobis_merger
 
 def get_matches_accuracy(gt_comparisons, groups, fragments):
     comparisons = []
@@ -52,7 +52,7 @@ def get_matches_accuracy(gt_comparisons, groups, fragments):
                (s_comp[0] == gt_comp[1] and s_comp[1] == gt_comp[0] and s_comp[2] == gt_comp[3] and s_comp[3] == gt_comp[2]):
                 correct += 1
                 match_found = True
-                break  # o singură dată contează
+                break  
 
         if not match_found:
             wrong += 1
@@ -92,8 +92,10 @@ def merge_where_obvious(one_match_condition, mean_condition, one_image_th, group
                         if check_all_group_matchings_scores(one_match_condition,mean_condition, fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, one_image_th, group_th):    
                             groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
                             update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
-                            # print(comp)
-
+                            print(comp)
+                            if pasted_group_additional_rotation > 0:
+                                print(f"group {anchor_group_idx} merged with group {pasted_group_idx} - rotation {pasted_group_additional_rotation}")
+                                show_all_groups(groups, fragments, fragment_idx_to_group_idx, 1)
     return groups, fragments, fragment_idx_to_group_idx
 
 
@@ -217,7 +219,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
 
                     if check_all_group_matchings_scores(one_match_condition, group_condition, fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, one_match_th, group_th):
 
-                        # print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({offset_row},{offset_col}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
+                        print(f"GROUP {vote_group_idx} votes for GROUP {candidate_group_idx} with offset ({offset_row},{offset_col}), rotation {rotation} --> {count} votes, mean_score={mean_score:.6f}")
 
                         groups[vote_group_idx] = merge_groups(
                             fragments, pasted_group_additional_rotation,
@@ -225,7 +227,7 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
                             fragment_idx_to_group_idx)
 
                         update_after_merge(groups, fragments, fragment_idx_to_group_idx, candidate_group_idx)
-                        # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 1)
+                        show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
 
                         was_merged = True
                         break
@@ -247,81 +249,81 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
 
 
 
-# def draw_red_border(fragment:Fragment, side: Side):
-#     fragment_value = fragment.value.copy()
+def draw_red_border(fragment:Fragment, side: Side):
+    fragment_value = fragment.value.copy()
 
-#     fragment_value[side.side_indexes_of_fragment[:,0],side.side_indexes_of_fragment[:,1]] = [255, 0, 0, 255]
-#     return fragment_value
-
-
+    fragment_value[side.side_indexes_of_fragment[:,0],side.side_indexes_of_fragment[:,1]] = [255, 0, 0, 255]
+    return fragment_value
 
 
 
-# def rotate_fragment(fragments, side, side_type):
-#     image = fragments[side.fragment_idx].value
+
+
+def rotate_fragment(fragments, side, side_type):
+    image = fragments[side.fragment_idx].value
    
-#     h, w = image.shape[:2]
+    h, w = image.shape[:2]
 
-#     p1 = side.side_indexes_of_fragment[0]
-#     p2 = side.side_indexes_of_fragment[-1]
+    p1 = side.side_indexes_of_fragment[0]
+    p2 = side.side_indexes_of_fragment[-1]
 
-#     x, y = p2[0] - p1[0], p2[1] - p1[1]
-#     th1 = np.degrees(np.arctan2(y, x))
+    x, y = p2[0] - p1[0], p2[1] - p1[1]
+    th1 = np.degrees(np.arctan2(y, x))
 
-#     if side_type == 1:
-#         p1 = [0, w-1]
-#         p2 = [h-1, w-1]
-#     else:
-#         p1 = [h-1, 0]
-#         p2 = [0, 0]
-#     x, y = p2[0] - p1[0], p2[1] - p1[1]
-#     th2 = np.degrees(np.arctan2(y, x))
+    if side_type == 1:
+        p1 = [0, w-1]
+        p2 = [h-1, w-1]
+    else:
+        p1 = [h-1, 0]
+        p2 = [0, 0]
+    x, y = p2[0] - p1[0], p2[1] - p1[1]
+    th2 = np.degrees(np.arctan2(y, x))
 
-#     rotation_angle = th2 - th1
+    rotation_angle = th2 - th1
   
 
-#     if abs(rotation_angle) < 5:
-#         return image
+    if abs(rotation_angle) < 5:
+        return image
     
-#     elif rotation_angle > 80 and rotation_angle < 100 or rotation_angle < -260 and rotation_angle > -280:
-#         image = cv.rotate(image, cv.ROTATE_90_COUNTERCLOCKWISE)
+    elif rotation_angle > 80 and rotation_angle < 100 or rotation_angle < -260 and rotation_angle > -280:
+        image = cv.rotate(image, cv.ROTATE_90_COUNTERCLOCKWISE)
 
-#     elif abs(rotation_angle) > 170 and abs(rotation_angle) < 190 or rotation_angle < -170 and rotation_angle > -190:
-#         image = cv.rotate(image, cv.ROTATE_180)
+    elif abs(rotation_angle) > 170 and abs(rotation_angle) < 190 or rotation_angle < -170 and rotation_angle > -190:
+        image = cv.rotate(image, cv.ROTATE_180)
     
-#     elif rotation_angle < -80 and rotation_angle > -100  or rotation_angle > 260 and rotation_angle < 280:
-#         image = cv.rotate(image, cv.ROTATE_90_CLOCKWISE)
-#     else:
-#         print(f"invalid rotation angle {rotation_angle}")
-#         return 0
+    elif rotation_angle < -80 and rotation_angle > -100  or rotation_angle > 260 and rotation_angle < 280:
+        image = cv.rotate(image, cv.ROTATE_90_CLOCKWISE)
+    else:
+        print(f"invalid rotation angle {rotation_angle}")
+        return 0
   
-#     return image
+    return image
 
 
 
-# def two_fragments_merger(fragments, side1, side2):
-#     rotated_fragment1 = rotate_fragment(fragments, side1, 1)
-#     rotated_fragment2 = rotate_fragment(fragments, side2, 2)
+def two_fragments_merger(fragments, side1, side2):
+    rotated_fragment1 = rotate_fragment(fragments, side1, 1)
+    rotated_fragment2 = rotate_fragment(fragments, side2, 2)
 
 
-#     new_fragment = np.hstack((rotated_fragment1, rotated_fragment2))
-#     return new_fragment
+    new_fragment = np.hstack((rotated_fragment1, rotated_fragment2))
+    return new_fragment
 
 
-# def merge_fragments_two_by_two(fragments: List[Fragment], sides_comparisons: List[SidesComparison]):
-#     banned_fragments_idx = []
-#     new_fragments = []
-#     new_fr_idx = 0
-#     for comp in sides_comparisons:
-#         if comp.side1.fragment_idx not in banned_fragments_idx and comp.side2.fragment_idx not in banned_fragments_idx:
-#             new_fragment_value = two_fragments_merger(fragments, comp.side1, comp.side2)
+def merge_fragments_two_by_two(fragments: List[Fragment], sides_comparisons: List[SidesComparison]):
+    banned_fragments_idx = []
+    new_fragments = []
+    new_fr_idx = 0
+    for comp in sides_comparisons:
+        if comp.side1.fragment_idx not in banned_fragments_idx and comp.side2.fragment_idx not in banned_fragments_idx:
+            new_fragment_value = two_fragments_merger(fragments, comp.side1, comp.side2)
 
-#             new_fragment = Fragment(new_fragment_value, new_fr_idx)
-#             new_fragments.append(new_fragment)
-#             banned_fragments_idx.append(comp.side1.fragment_idx)
-#             banned_fragments_idx.append(comp.side2.fragment_idx)
-#             new_fr_idx += 1
-#     return new_fragments
+            new_fragment = Fragment(new_fragment_value, new_fr_idx)
+            new_fragments.append(new_fragment)
+            banned_fragments_idx.append(comp.side1.fragment_idx)
+            banned_fragments_idx.append(comp.side2.fragment_idx)
+            new_fr_idx += 1
+    return new_fragments
 
 
 

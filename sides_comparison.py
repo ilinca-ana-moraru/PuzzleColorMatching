@@ -9,8 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from typing import List
 from fragment import *
-
-
+from utils import *
 
 
 
@@ -21,7 +20,7 @@ class SidesComparison:
         self.model = global_values.MODEL
         self.device = global_values.DEVICE
         self.buddy_score = None
-
+        self.fragments = fragments
         if global_values.GRAD_SCORING == True:
             self.grad_scoring()
         else:
@@ -73,8 +72,8 @@ class SidesComparison:
         #         self.score *= 3
 
 
-        # self.DLR, self.DRL =  mahalanobis_merger(self,fragments)
-        # self.score = self.DLR + self.DRL
+        self.DLR, self.DRL =  mahalanobis_merger(self,self.fragments)
+        self.mahalanobis = self.DLR + self.DRL
 
 
     def __str__(self):
