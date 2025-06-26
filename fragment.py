@@ -95,8 +95,8 @@ def divide_image(image_path, output_folder,solution_path, n, m):
         for j in range(m):
             x, y = j * tile_w, i * tile_h  
             cropped_fragment = rgba_image[y:y + tile_h, x:x + tile_w]  
-            fr_idx = i * m + j
-            # fr_idx = ids[i * m + j]
+            # fr_idx = i * m + j
+            fr_idx = ids[i * m + j]
 
             if global_values.ROTATING_PIECES:
                 rotation = int(random.randint(0, 3)) 

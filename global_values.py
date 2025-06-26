@@ -33,6 +33,7 @@ DIFF_GRAY = False
 
 SYMMETRIC_COMPARISONS = []
 
+IMG_IDX = 1
 
 def grad_func(image):
     if GRAD_GBR == True:

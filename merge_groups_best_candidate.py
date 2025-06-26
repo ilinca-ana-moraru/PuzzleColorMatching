@@ -161,6 +161,9 @@ def solve_groups_safe(groups, fragments, fragment_idx_to_group_idx):
         groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
         update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
         # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
+        CANVAS = (2000, 1150)
+        MARGIN_PX = 12
+        show_all_groups_to_scale( groups,fragments,fragment_idx_to_group_idx, canvas_px = CANVAS, tile_scale = 0.8, margin_px = MARGIN_PX, dpi = 120, grid_align = False)
 
     return groups, fragments, fragment_idx_to_group_idx
 
@@ -333,6 +336,10 @@ def solve_groups_safe_reparing(groups, fragments, fragment_idx_to_group_idx, big
         groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
         update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
         # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 0)
+        CANVAS = (2000, 1150)
+        MARGIN_PX = 12
+        show_all_groups_to_scale( groups,fragments,fragment_idx_to_group_idx, canvas_px = CANVAS, tile_scale = 0.8, margin_px = MARGIN_PX, dpi = 120, grid_align = False)
+
         print(f"biggest group: {biggest_group_idx}")
     return groups, fragments, fragment_idx_to_group_idx
 
