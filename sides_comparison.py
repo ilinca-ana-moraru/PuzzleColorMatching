@@ -60,7 +60,7 @@ class SidesComparison:
 
         self.grad_score = self.grad_match/ (self.grad_presence + 0.000001)
 
-        self.score = 1/(self.grad_presence + 0.000001)* np.sqrt(self.color_score**2 + self.grad_match**2)
+        self.score = 1/(self.grad_presence + 0.000001)* np.sqrt(self.color_score**2 )
 
 
         # print(f"color score: {self.color_score} grad score: {self.grad_score} grad match: {self.grad_match} grad presence: {self.grad_presence}")

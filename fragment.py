@@ -49,7 +49,7 @@ class Fragment:
             self.cx = 0
             self.cy = 0
         
-        self.grad = global_values.grad_func(self.value)
+        self.grad, self.dx_rgb, self.dy_rgb  = global_values.grad_func(self.value)
         self.create_sides()
 
     def create_sides(self):
@@ -69,10 +69,14 @@ class Fragment:
             rgb_values = self.value[:,:,:3]
             side_value = np.squeeze(rgb_values[side_indexes[:,0],side_indexes[:,1]]) 
             side_grad = self.grad[side_indexes[:,0],side_indexes[:,1]]
-      
+            rows = side_indexes[:, 0]
+            cols = side_indexes[:, 1]
+
+            dx_rgb = self.dx_rgb[rows, cols]  # shape: (N, 3)
+            dy_rgb = self.dy_rgb[rows, cols] 
             first_corner_idx_in_contour = second_corner_idx_in_contour
-            self.sides.append(Side(side_value, side_grad, side_indexes, first_corner_idx, self.fragment_idx, self.rotation))
-    
+            self.sides.append(Side(side_value, side_grad, dx_rgb, dy_rgb, side_indexes, first_corner_idx, self.fragment_idx, self.rotation))
+        
 
 def divide_image(image_path, output_folder,solution_path, n, m):
     random.seed(17)

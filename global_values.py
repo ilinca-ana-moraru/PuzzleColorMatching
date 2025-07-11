@@ -34,7 +34,8 @@ DIFF_GRAY = False
 SYMMETRIC_COMPARISONS = []
 
 IMG_IDX = 1
-
+ETAPA = 1
+FOR_VIDEO = True
 def grad_func(image):
     if GRAD_GBR == True:
         return apply_Grad_GBR(image)

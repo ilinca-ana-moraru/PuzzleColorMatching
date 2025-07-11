@@ -93,6 +93,9 @@ def merge_where_obvious(one_match_condition, mean_condition, one_image_th, group
                             groups[anchor_group_idx] = merge_groups(fragments, pasted_group_additional_rotation, shifted_anchor_group, shifted_pasted_group, fragment_idx_to_group_idx)
                             update_after_merge(groups, fragments, fragment_idx_to_group_idx, pasted_group_idx)
                             # print(comp)
+                            CANVAS = (2000, 1250)
+                            MARGIN_PX = 12
+                            show_all_groups_to_scale( groups,fragments,fragment_idx_to_group_idx, canvas_px = CANVAS, tile_scale = 0.8, margin_px = MARGIN_PX, dpi = 120, grid_align = False)
 
     return groups, fragments, fragment_idx_to_group_idx
 
@@ -226,6 +229,9 @@ def vote_and_solve(groups, fragments, fragment_idx_to_group_idx, one_match_condi
 
                         update_after_merge(groups, fragments, fragment_idx_to_group_idx, candidate_group_idx)
                         # show_all_groups(groups, fragments, fragment_idx_to_group_idx, 1)
+                        CANVAS = (2000, 1250)
+                        MARGIN_PX = 12
+                        show_all_groups_to_scale( groups,fragments,fragment_idx_to_group_idx, canvas_px = CANVAS, tile_scale = 0.8, margin_px = MARGIN_PX, dpi = 120, grid_align = False)
 
                         was_merged = True
                         break
